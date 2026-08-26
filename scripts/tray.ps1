@@ -77,16 +77,26 @@ function Add-Disabled([string]$text) {
 }
 
 $menu.add_Opening({
+  # $HOME is a read-only automatic variable in PowerShell — never assign to it.
+  try {
+    Rebuild-TrayMenu
+  } catch {
+    $menu.Items.Clear()
+    Add-Disabled ("tray error: " + $_.Exception.Message)
+  }
+})
+
+function Rebuild-TrayMenu {
   $menu.Items.Clear()
 
-  $home = New-Object System.Windows.Forms.ToolStripMenuItem
-  $home.Text = "Open home"
-  $home.add_Click({ Open-Home })
-  [void]$menu.Items.Add($home)
-  $open = New-Object System.Windows.Forms.ToolStripMenuItem
-  $open.Text = "Open dashboard"
-  $open.add_Click({ Open-Dashboard })
-  [void]$menu.Items.Add($open)
+  $openHome = New-Object System.Windows.Forms.ToolStripMenuItem
+  $openHome.Text = "Open home"
+  $openHome.add_Click({ Open-Home })
+  [void]$menu.Items.Add($openHome)
+  $openDash = New-Object System.Windows.Forms.ToolStripMenuItem
+  $openDash.Text = "Open dashboard"
+  $openDash.add_Click({ Open-Dashboard })
+  [void]$menu.Items.Add($openDash)
   [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
 
   $data = Invoke-Api GET "/api/v1/tray"
@@ -175,7 +185,7 @@ $menu.add_Opening({
     [System.Windows.Forms.Application]::Exit()
   })
   [void]$menu.Items.Add($quit)
-})
+}
 
 $notify.add_MouseUp({
   param($sender, $e)

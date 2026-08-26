@@ -163,6 +163,19 @@ h3 { margin: 0 0 8px; font-size: 16px; }
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 24px 28px;
+  margin-top: 14px;
+}
+.install-cmd {
+  margin: 12px 0 12px;
+  padding: 14px 16px;
+  background: #0b0e12;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: #c9d4e0;
+  overflow-x: auto;
 }
 .steps ol { margin: 12px 0 0; padding: 0 0 0 18px; color: #d5dde6; }
 .steps li { margin: 0 0 12px; line-height: 1.5; }

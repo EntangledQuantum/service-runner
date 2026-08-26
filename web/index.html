@@ -38,7 +38,7 @@
       </p>
       <div class="hero-actions">
         <a class="btn primary lg local-only" id="btn-hero-dashboard" href="dashboard.html" hidden>Open dashboard</a>
-        <a class="btn lg" href="https://github.com/EntangledQuantum/service-runner#install-windows">Get the code</a>
+        <a class="btn lg" href="#install">Install</a>
       </div>
       <p class="muted local-only" id="local-hint" hidden>Running on this machine at <code id="local-origin"></code></p>
       <p class="muted gh-only" id="gh-hint">This page is the public site. The dashboard and process supervisor only run on your Windows PC.</p>
@@ -62,12 +62,21 @@
       </article>
     </section>
 
-    <section class="steps">
-      <h3>How it works</h3>
+    <section class="steps" id="install">
+      <h3>Install</h3>
+      <pre class="install-cmd">git clone https://github.com/EntangledQuantum/service-runner.git
+cd service-runner
+pnpm install
+pnpm start</pre>
+      <p class="muted">Windows. Node 22+. First start creates a tray icon, a logon shortcut, and config in <code>%LOCALAPPDATA%\ServiceRunner</code> (not in git). Then open <code>http://127.0.0.1:4780</code>.</p>
+    </section>
+
+    <section class="steps" id="uninstall">
+      <h3>Uninstall</h3>
       <ol>
-        <li><strong>Install on Windows.</strong> <code>pnpm start</code> creates config in <code>%LOCALAPPDATA%\ServiceRunner</code>, a tray icon, and a logon shortcut.</li>
-        <li><strong>Add a service.</strong> Point at a folder and the command you would have typed — <code>pnpm dev</code>, <code>npm run start</code>, a Python venv, anything local.</li>
-        <li><strong>Treat it as production.</strong> After an agent changes the app, it asks Service Runner to restart. Logs stay seven days. Reboot and auto-start services come back.</li>
+        <li>Right-click the tray icon → <strong>Quit Service Runner</strong> (stops every child).</li>
+        <li>From the clone: <code>pnpm run uninstall:startup</code> — removes the Windows logon shortcut.</li>
+        <li>Optional: delete <code>%LOCALAPPDATA%\ServiceRunner</code> and the cloned folder.</li>
       </ol>
     </section>
   </main>
