@@ -18,6 +18,17 @@ export function shortcutPath(): string {
   return join(startupDir(), SHORTCUT_NAME);
 }
 
+export function launchDetached(): void {
+  const vbs = writeLaunchVbs();
+  const child = spawn("wscript.exe", [vbs], {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true,
+    cwd: PROJECT_ROOT,
+  });
+  child.unref();
+}
+
 export function writeLaunchVbs(): string {
   const node = process.execPath;
   const tsx = join(PROJECT_ROOT, "node_modules", "tsx", "dist", "cli.mjs");

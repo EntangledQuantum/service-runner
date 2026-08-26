@@ -68,7 +68,7 @@
 cd service-runner
 pnpm install
 pnpm start</pre>
-      <p class="muted">Windows. Node 22+. First start creates a tray icon, a logon shortcut, and config in <code>%LOCALAPPDATA%\ServiceRunner</code> (not in git). Then open <code>http://127.0.0.1:4780</code>.</p>
+      <p class="muted">Windows. Node 22+. After <code>pnpm start</code> the terminal hands off to the tray — close the window. It also adds a logon shortcut. Config: <code>%LOCALAPPDATA%\ServiceRunner</code> (not in git).</p>
     </section>
 
     <section class="steps" id="uninstall">

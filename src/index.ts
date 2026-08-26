@@ -7,11 +7,12 @@ import { pruneLogs } from "./logs.ts";
 import { initProcessManager, startAutoServices, stopAllAndWait, getConfig } from "./process-manager.ts";
 import { createAppServer } from "./server.ts";
 import { startTray, stopTray } from "./tray.ts";
-import { installStartup, uninstallStartup, writeLaunchVbs } from "./autostart.ts";
+import { installStartup, launchDetached, uninstallStartup, writeLaunchVbs } from "./autostart.ts";
 import { baseUrl } from "./prompt.ts";
 
 const args = new Set(process.argv.slice(2));
 const hidden = args.has("--hidden");
+const foreground = args.has("--foreground");
 const setup = args.has("--setup");
 const installOnly = args.has("--install-startup");
 const uninstallOnly = args.has("--uninstall-startup");
@@ -46,6 +47,29 @@ async function main(): Promise<void> {
   }
 
   if (installOnly) return;
+
+  // `pnpm start` hands off to a hidden tray process so this terminal can close.
+  // `--hidden` is that tray process. `--foreground` / `pnpm dev` stay attached.
+  if (!hidden && !foreground) {
+    const url = baseUrl(cfg);
+    if (await portTaken(cfg.port)) {
+      console.log(`Service Runner is already in the tray.`);
+      console.log(url);
+      console.log("You can close this terminal.");
+      openBrowser(url + "/");
+      return;
+    }
+    launchDetached();
+    const up = await waitForPort(cfg.port, 10000);
+    if (!up) {
+      console.error("Started the tray process but it did not bind in time. Try: pnpm start -- --foreground");
+      process.exit(1);
+    }
+    console.log(`Service Runner is in the tray — you can close this terminal.`);
+    console.log(url);
+    if (cfg.openDashboardOnLaunch) openBrowser(url + "/");
+    return;
+  }
 
   const pruned = pruneLogs(cfg);
   if (pruned) console.log(`Pruned ${pruned} expired log file(s).`);
@@ -101,6 +125,20 @@ async function shutdown(): Promise<void> {
     /* ignore */
   }
   process.exit(0);
+}
+
+function waitForPort(port: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const tick = () => {
+      void portTaken(port).then((taken) => {
+        if (taken) resolve(true);
+        else if (Date.now() >= deadline) resolve(false);
+        else setTimeout(tick, 250);
+      });
+    };
+    tick();
+  });
 }
 
 function portTaken(port: number): Promise<boolean> {

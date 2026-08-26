@@ -16,7 +16,9 @@ pnpm install
 pnpm start
 ```
 
-Tray icon + [http://127.0.0.1:4780](http://127.0.0.1:4780). Config lives in `%LOCALAPPDATA%\ServiceRunner` and is never committed.
+That command returns immediately. Close the terminal — Service Runner stays in the tray and comes back at logon. Site: [http://127.0.0.1:4780](http://127.0.0.1:4780). Config: `%LOCALAPPDATA%\ServiceRunner` (never committed).
+
+`pnpm dev` is the only mode that stays attached (debug logs).
 
 ## Uninstall
 

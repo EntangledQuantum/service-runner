@@ -15,7 +15,7 @@
   },
   "scripts": {
     "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts --foreground",
     "setup": "tsx src/index.ts --setup",
     "install:startup": "tsx src/index.ts --install-startup",
     "uninstall:startup": "tsx src/index.ts --uninstall-startup",
