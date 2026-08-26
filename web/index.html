@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Service Runner</title>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="top">
+    <div class="brand">
+      <img src="/icon.png" alt="" width="36" height="36" />
+      <div>
+        <h1>Service Runner</h1>
+        <p class="muted">Local production host · <span id="base-url">127.0.0.1</span></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="stat" id="stat-pill"><span class="dot"></span><span id="stat-label">0 running</span></div>
+      <button type="button" class="btn ghost" id="btn-settings">Settings</button>
+      <button type="button" class="btn" id="btn-group">New group</button>
+      <button type="button" class="btn primary" id="btn-add">Add service</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="prompt-card" id="prompt-card">
+      <div class="prompt-head">
+        <div>
+          <h2>Agent prompt</h2>
+          <p class="muted">Paste this into any coding agent so it can register, update, and restart this app.</p>
+        </div>
+        <button type="button" class="btn primary" id="btn-copy">Copy prompt</button>
+      </div>
+      <pre id="prompt-text" class="prompt-text"></pre>
+    </section>
+
+    <section class="toolbar">
+      <div class="tabs" id="group-tabs"></div>
+    </section>
+
+    <section id="services" class="cards"></section>
+    <p class="empty" id="empty" hidden>No services yet. Add one above, or have an agent PUT to <code>/api/v1/services/:id</code>.</p>
+  </main>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawer-title">Logs</h2>
+        <p class="muted" id="drawer-sub"></p>
+      </div>
+      <div class="drawer-actions">
+        <select id="log-date"></select>
+        <button type="button" class="btn ghost" id="btn-refresh-logs">Refresh</button>
+        <button type="button" class="btn ghost" id="btn-close-drawer">Close</button>
+      </div>
+    </div>
+    <pre class="log" id="log-view"></pre>
+  </aside>
+
+  <div class="modal-bg" id="modal-bg" hidden>
+    <form class="modal" id="form-service">
+      <h2 id="form-title">Add service</h2>
+      <label>Name <input name="name" required placeholder="Life OS" /></label>
+      <label>Stable id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="life-os" /></label>
+      <label>Project folder (absolute local path) <input name="cwd" required placeholder="E:\My_Project\Life_OS" /></label>
+      <label>Command <input name="command" required placeholder="pnpm dev" /></label>
+      <label>Python venv (optional) <input name="venv" placeholder="E:\My_Project\app\.venv" /></label>
+      <label>Group
+        <select name="groupId"><option value="">— none —</option></select>
+      </label>
+      <label>Environment variables <textarea name="env" rows="3" placeholder="PORT=3000&#10;NODE_ENV=development"></textarea></label>
+      <div class="checks">
+        <label class="check"><input type="checkbox" name="autoStart" checked /> Start with Service Runner (including at logon)</label>
+        <label class="check"><input type="checkbox" name="restartOnCrash" /> Restart if it crashes</label>
+      </div>
+      <p class="error" id="form-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal-bg" id="group-bg" hidden>
+    <form class="modal" id="form-group">
+      <h2>New group</h2>
+      <label>Name <input name="name" required placeholder="Dev stack" /></label>
+      <label>Id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="dev-stack" /></label>
+      <p class="error" id="group-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-group-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal-bg" id="settings-bg" hidden>
+    <form class="modal" id="form-settings">
+      <h2>Settings</h2>
+      <label>Log retention (days) <input name="logRetentionDays" type="number" min="1" max="365" /></label>
+      <label class="check"><input type="checkbox" name="autoStartOnBoot" /> Start Service Runner when Windows logs on</label>
+      <label class="check"><input type="checkbox" name="openDashboardOnLaunch" /> Open this control panel on launch</label>
+      <p class="muted small">Logs and config live in <code id="config-dir"></code> and are never part of the git repo. Changing the listen port requires a restart.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-settings-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script>window.__SR__ = %%BOOTSTRAP%%;</script>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "name": "service-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Windows tray supervisor for local long-running web apps. One control panel, one API, no extra terminals.",
+  "license": "MIT",
+  "author": "EntangledQuantum",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EntangledQuantum/service-runner"
+  },
+  "bin": {
+    "service-runner": "src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "setup": "tsx src/index.ts --setup",
+    "install:startup": "tsx src/index.ts --install-startup",
+    "uninstall:startup": "tsx src/index.ts --uninstall-startup",
+    "make-icon": "node scripts/make-icon.mjs",
+    "screenshot": "node scripts/screenshot.mjs",
+    "test": "tsx --test src/security.test.ts src/paths.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.18.0",
+  "dependencies": {
+    "tsx": "^4.20.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "playwright": "^1.55.0",
+    "typescript": "^5.9.2"
+  }
+}
