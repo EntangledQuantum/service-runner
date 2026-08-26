@@ -413,7 +413,17 @@ select {
   white-space: pre-wrap;
   background: #0b0e12;
   border-radius: 0 0 var(--radius) var(--radius);
+  user-select: text;
+  cursor: text;
 }
+.log-link {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  word-break: break-all;
+}
+.log-link:hover { color: var(--mint); }
 
 .modal-bg {
   position: fixed;

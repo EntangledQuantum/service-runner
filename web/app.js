@@ -346,6 +346,7 @@ function boot() {
   $("btn-close-drawer").addEventListener("click", () => {
     $("drawer").hidden = true;
   });
+  $("btn-copy-logs").addEventListener("click", copyLogs);
   $("btn-refresh-logs").addEventListener("click", () => {
     if (state.selected) loadLogs(state.selected, $("log-date").value || undefined);
   });
@@ -410,8 +411,82 @@ async function loadLogs(id, date) {
   const sel = $("log-date");
   sel.innerHTML = (data.files.length ? data.files : ["(today)"]).map((d) => `<option>${esc(d)}</option>`).join("");
   if (date) sel.value = date;
-  $("log-view").textContent = data.text || "(no log lines yet)";
-  $("log-view").scrollTop = $("log-view").scrollHeight;
+  setLogText(data.text || "");
+}
+
+function setLogText(text) {
+  const view = $("log-view");
+  if (!text) {
+    view.dataset.empty = "1";
+    view.textContent = "(no log lines yet)";
+    return;
+  }
+  view.dataset.empty = "0";
+  view.innerHTML = text.split(/\n/).map(linkifyLine).join("\n");
+  view.scrollTop = view.scrollHeight;
+}
+
+function appendLogLine(line) {
+  const view = $("log-view");
+  if (view.dataset.empty === "1") {
+    view.dataset.empty = "0";
+    view.innerHTML = "";
+  }
+  view.insertAdjacentHTML("beforeend", linkifyLine(line) + "\n");
+  view.scrollTop = view.scrollHeight;
+}
+
+const LOG_URL_RE =
+  /https?:\/\/[^\s<>"'\\]+|(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d{2,5})?(?:\/[^\s<>"'\\]*)?/gi;
+
+function trimUrl(raw) {
+  return raw.replace(/[),.;]+$/g, "");
+}
+
+function hrefFor(raw) {
+  const cleaned = trimUrl(raw);
+  if (/^https?:\/\//i.test(cleaned)) return cleaned;
+  return "http://" + cleaned;
+}
+
+function linkifyLine(text) {
+  const s = String(text);
+  let out = "";
+  let last = 0;
+  LOG_URL_RE.lastIndex = 0;
+  let m;
+  while ((m = LOG_URL_RE.exec(s))) {
+    out += esc(s.slice(last, m.index));
+    const raw = trimUrl(m[0]);
+    const href = hrefFor(raw);
+    out += `<a class="log-link" href="${esc(href)}" target="_blank" rel="noopener">${esc(raw)}</a>`;
+    if (raw.length < m[0].length) out += esc(m[0].slice(raw.length));
+    last = m.index + m[0].length;
+  }
+  out += esc(s.slice(last));
+  return out;
+}
+
+async function copyLogs() {
+  const view = $("log-view");
+  const sel = getSelection();
+  const picked =
+    sel && view.contains(sel.anchorNode) && sel.toString() ? sel.toString() : view.innerText || "";
+  const text = picked.replace(/^\(no log lines yet\)\s*$/, "");
+  if (!text) return;
+  const btn = $("btn-copy-logs");
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = "Copied";
+    setTimeout(() => {
+      btn.textContent = "Copy";
+    }, 1400);
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(view);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
 }
 
 function sseWithAuth() {
@@ -471,9 +546,6 @@ function onEvent(ev) {
     }
   }
   if (ev.type === "log" && state.selected === ev.serviceId && !$("drawer").hidden) {
-    const view = $("log-view");
-    if (view.textContent === "(no log lines yet)") view.textContent = "";
-    view.textContent += `${ev.ts} [${ev.stream}] ${ev.line}\n`;
-    view.scrollTop = view.scrollHeight;
+    appendLogLine(`${ev.ts} [${ev.stream}] ${ev.line}`);
   }
 }
