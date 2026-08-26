@@ -1,10 +1,31 @@
-/* global __SR__ */
-const SR = window.__SR__ || {};
+function readBootstrap() {
+  const el = document.getElementById("sr-bootstrap");
+  if (!el) return {};
+  const raw = (el.textContent || "").trim();
+  if (!raw || raw === "%%BOOTSTRAP%%") return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+const SR = Object.assign({}, window.__SR__, readBootstrap());
+window.__SR__ = SR;
 const TOKEN = SR.token;
-let state = { services: [], groups: [], tab: "all", selected: null, logs: "" };
+let state = { services: [], groups: [], tab: "all", selected: null, stats: null };
 
 const $ = (id) => document.getElementById(id);
 const field = (form, name) => form.elements.namedItem(name);
+
+if (!TOKEN) {
+  $("offline").hidden = false;
+  $("status-panel").hidden = true;
+  $("prompt-card").hidden = true;
+  document.querySelector(".dash-toolbar").hidden = true;
+} else {
+  boot();
+}
 
 async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {
@@ -40,33 +61,48 @@ function envToLines(env) {
 }
 
 function setPrompt() {
-  $("prompt-text").textContent = SR.prompt || "";
-  $("base-url").textContent = `127.0.0.1:${SR.port || 4780}`;
-  $("config-dir").textContent = SR.configDir || "%LOCALAPPDATA%\\ServiceRunner";
+  if ($("prompt-text")) $("prompt-text").textContent = SR.prompt || "";
+  if ($("config-dir")) $("config-dir").textContent = SR.configDir || "%LOCALAPPDATA%\\ServiceRunner";
 }
 
-$("btn-copy").addEventListener("click", async () => {
-  const text = $("prompt-text").textContent;
-  try {
-    await navigator.clipboard.writeText(text);
-    $("btn-copy").textContent = "Copied";
-    setTimeout(() => {
-      $("btn-copy").textContent = "Copy prompt";
-    }, 1400);
-  } catch {
-    const r = document.createRange();
-    r.selectNodeContents($("prompt-text"));
-    const sel = getSelection();
-    sel.removeAllRanges();
-    sel.addRange(r);
+function formatUptime(sec) {
+  if (!Number.isFinite(sec)) return "—";
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m`;
+  return `${sec}s`;
+}
+
+function formatMb(n) {
+  if (n === undefined || n === null || Number.isNaN(n)) return "—";
+  return `${n} MB`;
+}
+
+function renderStats() {
+  const s = state.stats;
+  const running = state.services.filter((x) => x.runtime.status === "running" || x.runtime.status === "starting").length;
+  const crashed = state.services.filter((x) => x.runtime.status === "crashed").length;
+  const live = $("status-live");
+  live.classList.toggle("live", running > 0);
+  $("status-live-label").textContent = running ? "Live" : "Idle";
+  $("m-running").textContent = s ? s.running : running;
+  $("m-total").textContent = s ? s.total : state.services.length;
+  $("m-crashed").textContent = s ? s.crashed : crashed;
+  if (s) {
+    $("m-uptime").textContent = formatUptime(s.uptimeSec);
+    $("m-mem-services").textContent = formatMb(s.memory.servicesMb);
+    $("m-mem-runner").textContent = formatMb(s.memory.runnerMb);
+    $("m-mem-total").textContent = formatMb(s.memory.totalMb);
+    $("m-cpu").textContent = `${s.cpuPct}%`;
+    $("status-meta").textContent = `127.0.0.1:${s.port} · ${s.memory.serviceProcs} app process${s.memory.serviceProcs === 1 ? "" : "es"} · ${s.groups} group${s.groups === 1 ? "" : "s"}`;
   }
-});
+}
 
 function render() {
-  const running = state.services.filter((s) => s.runtime.status === "running" || s.runtime.status === "starting").length;
-  $("stat-label").textContent = `${running} running · ${state.services.length} total`;
-  $("stat-pill").classList.toggle("live", running > 0);
-
+  renderStats();
   const tabs = $("group-tabs");
   const items = [{ id: "all", name: "All" }, ...state.groups, { id: "ungrouped", name: "Ungrouped" }];
   tabs.innerHTML = "";
@@ -181,103 +217,163 @@ async function refresh() {
   render();
 }
 
+async function loadStats() {
+  try {
+    state.stats = await api("/api/v1/stats");
+    renderStats();
+  } catch {
+    /* keep last snapshot */
+  }
+}
+
 function openModal(id, show) {
   $(id).hidden = !show;
 }
 
-$("btn-add").addEventListener("click", () => {
-  $("form-title").textContent = "Add service";
-  $("form-service").reset();
-  $("form-service").dataset.mode = "create";
-  field($("form-service"), "id").disabled = false;
-  $("form-error").hidden = true;
-  openModal("modal-bg", true);
-  field($("form-service"), "name").focus();
-});
-$("btn-cancel").addEventListener("click", () => openModal("modal-bg", false));
-$("btn-group").addEventListener("click", () => {
-  $("form-group").reset();
-  $("group-error").hidden = true;
-  openModal("group-bg", true);
-});
-$("btn-group-cancel").addEventListener("click", () => openModal("group-bg", false));
-$("btn-settings").addEventListener("click", async () => {
-  const s = await api("/api/v1/settings");
-  const f = $("form-settings");
-  field(f, "logRetentionDays").value = s.logRetentionDays;
-  field(f, "autoStartOnBoot").checked = s.autoStartOnBoot;
-  field(f, "openDashboardOnLaunch").checked = s.openDashboardOnLaunch;
-  openModal("settings-bg", true);
-});
-$("btn-settings-cancel").addEventListener("click", () => openModal("settings-bg", false));
-
-$("form-service").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  const env = envLinesToObject(field(f, "env").value);
-  const body = {
-    name: field(f, "name").value.trim(),
-    cwd: field(f, "cwd").value.trim(),
-    command: field(f, "command").value.trim(),
-    venv: field(f, "venv").value.trim() || undefined,
-    groupId: field(f, "groupId").value || null,
-    autoStart: field(f, "autoStart").checked,
-    restartOnCrash: field(f, "restartOnCrash").checked,
-    args: [],
-    env: Object.keys(env).length ? env : undefined,
-  };
-  const id = field(f, "id").value.trim();
-  if (id) body.id = id;
-  try {
-    $("form-error").hidden = true;
-    if (f.dataset.mode === "edit") {
-      await api(`/api/v1/services/${f.dataset.id}`, { method: "PUT", body });
-    } else if (id) {
-      await api(`/api/v1/services/${id}`, { method: "PUT", body });
-    } else {
-      await api("/api/v1/services", { method: "POST", body });
-    }
-    openModal("modal-bg", false);
-    await refresh();
-  } catch (err) {
-    $("form-error").hidden = false;
-    $("form-error").textContent = err.message;
-  }
-});
-
-$("form-group").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  try {
-    await api("/api/v1/groups", {
-      method: "POST",
-      body: { name: field(f, "name").value.trim(), id: field(f, "id").value.trim() || undefined },
-    });
-    openModal("group-bg", false);
-    await refresh();
-  } catch (err) {
-    $("group-error").hidden = false;
-    $("group-error").textContent = err.message;
-  }
-});
-
-$("form-settings").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  await api("/api/v1/settings", {
-    method: "PATCH",
-    body: {
-      logRetentionDays: Number(field(f, "logRetentionDays").value),
-      autoStartOnBoot: field(f, "autoStartOnBoot").checked,
-      openDashboardOnLaunch: field(f, "openDashboardOnLaunch").checked,
-    },
-  });
-  const prompt = await api("/api/v1/prompt");
-  SR.prompt = prompt.text;
-  SR.logRetentionDays = prompt.logRetentionDays;
+function boot() {
   setPrompt();
-  openModal("settings-bg", false);
-});
+  $("btn-copy").addEventListener("click", async () => {
+    const text = $("prompt-text").textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      $("btn-copy").textContent = "Copied";
+      setTimeout(() => {
+        $("btn-copy").textContent = "Copy prompt";
+      }, 1400);
+    } catch {
+      const r = document.createRange();
+      r.selectNodeContents($("prompt-text"));
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+  });
+
+  $("btn-add").addEventListener("click", () => {
+    $("form-title").textContent = "Add service";
+    $("form-service").reset();
+    $("form-service").dataset.mode = "create";
+    field($("form-service"), "id").disabled = false;
+    $("form-error").hidden = true;
+    openModal("modal-bg", true);
+    field($("form-service"), "name").focus();
+  });
+  $("btn-cancel").addEventListener("click", () => openModal("modal-bg", false));
+  $("btn-group").addEventListener("click", () => {
+    $("form-group").reset();
+    $("group-error").hidden = true;
+    openModal("group-bg", true);
+  });
+  $("btn-group-cancel").addEventListener("click", () => openModal("group-bg", false));
+  $("btn-settings").addEventListener("click", async () => {
+    const s = await api("/api/v1/settings");
+    const f = $("form-settings");
+    field(f, "logRetentionDays").value = s.logRetentionDays;
+    field(f, "autoStartOnBoot").checked = s.autoStartOnBoot;
+    field(f, "openDashboardOnLaunch").checked = s.openDashboardOnLaunch;
+    openModal("settings-bg", true);
+  });
+  $("btn-settings-cancel").addEventListener("click", () => openModal("settings-bg", false));
+
+  $("form-service").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const env = envLinesToObject(field(f, "env").value);
+    const body = {
+      name: field(f, "name").value.trim(),
+      cwd: field(f, "cwd").value.trim(),
+      command: field(f, "command").value.trim(),
+      venv: field(f, "venv").value.trim() || undefined,
+      groupId: field(f, "groupId").value || null,
+      autoStart: field(f, "autoStart").checked,
+      restartOnCrash: field(f, "restartOnCrash").checked,
+      args: [],
+      env: Object.keys(env).length ? env : undefined,
+    };
+    const id = field(f, "id").value.trim();
+    if (id) body.id = id;
+    try {
+      $("form-error").hidden = true;
+      if (f.dataset.mode === "edit") {
+        await api(`/api/v1/services/${f.dataset.id}`, { method: "PUT", body });
+      } else if (id) {
+        await api(`/api/v1/services/${id}`, { method: "PUT", body });
+      } else {
+        await api("/api/v1/services", { method: "POST", body });
+      }
+      openModal("modal-bg", false);
+      await refresh();
+    } catch (err) {
+      $("form-error").hidden = false;
+      $("form-error").textContent = err.message;
+    }
+  });
+
+  $("form-group").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    try {
+      await api("/api/v1/groups", {
+        method: "POST",
+        body: { name: field(f, "name").value.trim(), id: field(f, "id").value.trim() || undefined },
+      });
+      openModal("group-bg", false);
+      await refresh();
+    } catch (err) {
+      $("group-error").hidden = false;
+      $("group-error").textContent = err.message;
+    }
+  });
+
+  $("form-settings").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    await api("/api/v1/settings", {
+      method: "PATCH",
+      body: {
+        logRetentionDays: Number(field(f, "logRetentionDays").value),
+        autoStartOnBoot: field(f, "autoStartOnBoot").checked,
+        openDashboardOnLaunch: field(f, "openDashboardOnLaunch").checked,
+      },
+    });
+    const prompt = await api("/api/v1/prompt");
+    SR.prompt = prompt.text;
+    SR.logRetentionDays = prompt.logRetentionDays;
+    setPrompt();
+    openModal("settings-bg", false);
+  });
+
+  $("btn-close-drawer").addEventListener("click", () => {
+    $("drawer").hidden = true;
+  });
+  $("btn-refresh-logs").addEventListener("click", () => {
+    if (state.selected) loadLogs(state.selected, $("log-date").value || undefined);
+  });
+  $("log-date").addEventListener("change", () => {
+    if (state.selected) loadLogs(state.selected, $("log-date").value);
+  });
+
+  window.addEventListener("hashchange", () => {
+    const id = location.hash.replace(/^#/, "");
+    if (id) {
+      const s = state.services.find((x) => x.id === id);
+      if (s) openLogs(s);
+    }
+  });
+
+  refresh()
+    .then(() => {
+      const id = location.hash.replace(/^#/, "");
+      if (id) {
+        const s = state.services.find((x) => x.id === id);
+        if (s) openLogs(s);
+      }
+    })
+    .catch(toast);
+  loadStats();
+  setInterval(loadStats, 3000);
+  sseWithAuth();
+}
 
 function openEdit(s) {
   const f = $("form-service");
@@ -316,24 +412,6 @@ async function loadLogs(id, date) {
   if (date) sel.value = date;
   $("log-view").textContent = data.text || "(no log lines yet)";
   $("log-view").scrollTop = $("log-view").scrollHeight;
-}
-
-$("btn-close-drawer").addEventListener("click", () => {
-  $("drawer").hidden = true;
-});
-$("btn-refresh-logs").addEventListener("click", () => {
-  if (state.selected) loadLogs(state.selected, $("log-date").value || undefined);
-});
-$("log-date").addEventListener("change", () => {
-  if (state.selected) loadLogs(state.selected, $("log-date").value);
-});
-
-function connectEvents() {
-  const es = new EventSource("/api/v1/events?access_token=" + encodeURIComponent(TOKEN));
-  // EventSource cannot set Authorization; we stream after a one-shot cookie-less
-  // handshake via fetch EventSource polyfill below if 401.
-  es.close();
-  sseWithAuth();
 }
 
 function sseWithAuth() {
@@ -399,23 +477,3 @@ function onEvent(ev) {
     view.scrollTop = view.scrollHeight;
   }
 }
-
-window.addEventListener("hashchange", () => {
-  const id = location.hash.replace(/^#/, "");
-  if (id) {
-    const s = state.services.find((x) => x.id === id);
-    if (s) openLogs(s);
-  }
-});
-
-setPrompt();
-refresh()
-  .then(() => {
-    const id = location.hash.replace(/^#/, "");
-    if (id) {
-      const s = state.services.find((x) => x.id === id);
-      if (s) openLogs(s);
-    }
-  })
-  .catch(toast);
-connectEvents();

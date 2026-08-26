@@ -1,5 +1,5 @@
 /**
- * Capture control-panel screenshots into docs/screenshots/.
+ * Capture landing + dashboard screenshots into docs/screenshots/.
  * Expects Service Runner to already be listening on 127.0.0.1:4780.
  */
 import { chromium } from "playwright";
@@ -27,14 +27,21 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
 await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".prompt-card");
+await page.waitForSelector(".hero-title");
+await page.mouse.move(720, 280);
+await page.waitForTimeout(700);
+await page.screenshot({ path: join(outDir, "landing.png"), fullPage: true });
+console.log("wrote docs/screenshots/landing.png");
+
+await page.goto(base + "/dashboard.html", { waitUntil: "domcontentloaded" });
+await page.waitForSelector(".status-panel");
 await page.waitForSelector(".card");
-await page.waitForTimeout(1200);
+await page.mouse.move(420, 260);
+await page.waitForTimeout(1600);
 await page.evaluate(() => {
   const el = document.getElementById("prompt-text");
   if (el) el.textContent = el.textContent.replace(/Bearer \S+/g, "Bearer <token>");
 });
-
 await page.screenshot({ path: join(outDir, "dashboard.png"), fullPage: true });
 console.log("wrote docs/screenshots/dashboard.png");
 

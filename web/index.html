@@ -3,115 +3,81 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Service Runner</title>
-  <link rel="icon" href="/favicon.ico" />
-  <link rel="stylesheet" href="/styles.css" />
+  <title>Service Runner — local production host</title>
+  <meta name="description" content="Windows tray supervisor for long-running local web apps. One control panel, one API, no extra terminals." />
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
-  <div class="bg-grid"></div>
+<body class="page-home">
+  <canvas id="bg-grid"></canvas>
+
   <header class="top">
-    <div class="brand">
-      <img src="/icon.png" alt="" width="36" height="36" />
+    <a class="brand" href="index.html" aria-label="Service Runner home">
+      <img src="icon.png" alt="" width="36" height="36" />
       <div>
         <h1>Service Runner</h1>
-        <p class="muted">Local production host · <span id="base-url">127.0.0.1</span></p>
+        <p class="muted">Local production host</p>
       </div>
-    </div>
-    <div class="top-actions">
-      <div class="stat" id="stat-pill"><span class="dot"></span><span id="stat-label">0 running</span></div>
-      <button type="button" class="btn ghost" id="btn-settings">Settings</button>
-      <button type="button" class="btn" id="btn-group">New group</button>
-      <button type="button" class="btn primary" id="btn-add">Add service</button>
-    </div>
+    </a>
+    <nav class="top-actions">
+      <a class="icon-btn" href="https://github.com/EntangledQuantum/service-runner" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-.87-.01-1.71-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.09 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.32.1-2.75 0 0 .84-.27 2.75 1.05A9.3 9.3 0 0 1 12 6.84c.85.01 1.71.12 2.51.34 1.9-1.32 2.74-1.05 2.74-1.05.55 1.43.2 2.49.1 2.75.65.72 1.03 1.64 1.03 2.76 0 3.96-2.34 4.82-4.58 5.07.36.32.68.95.68 1.92 0 1.38-.01 2.49-.01 2.83 0 .27.18.6.69.49A10.04 10.04 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/></svg>
+      </a>
+      <a class="btn primary local-only" id="btn-open-dashboard" href="dashboard.html" hidden>Open dashboard</a>
+    </nav>
   </header>
 
-  <main>
-    <section class="prompt-card" id="prompt-card">
-      <div class="prompt-head">
-        <div>
-          <h2>Agent prompt</h2>
-          <p class="muted">Paste this into any coding agent so it can register, update, and restart this app.</p>
-        </div>
-        <button type="button" class="btn primary" id="btn-copy">Copy prompt</button>
+  <main class="home">
+    <section class="hero">
+      <p class="eyebrow">Windows · tray · localhost</p>
+      <h2 class="hero-title">Keep the apps running.<br />Leave the terminals behind.</h2>
+      <p class="hero-lead">
+        Service Runner is the local production host for long-running web apps.
+        Register a project once. It survives reboot. Agents restart it through an API
+        instead of babysitting <code>pnpm dev</code> in another PowerShell window.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary lg local-only" id="btn-hero-dashboard" href="dashboard.html" hidden>Open dashboard</a>
+        <a class="btn lg" href="https://github.com/EntangledQuantum/service-runner#install-windows">Get the code</a>
       </div>
-      <pre id="prompt-text" class="prompt-text"></pre>
+      <p class="muted local-only" id="local-hint" hidden>Running on this machine at <code id="local-origin"></code></p>
+      <p class="muted gh-only" id="gh-hint">This page is the public site. The dashboard and process supervisor only run on your Windows PC.</p>
     </section>
 
-    <section class="toolbar">
-      <div class="tabs" id="group-tabs"></div>
+    <section class="home-grid">
+      <article class="home-card">
+        <span class="home-kicker">Tray</span>
+        <h3>One icon, every process</h3>
+        <p>Left-click opens this site. Right-click starts or stops groups, restarts a service, or quits — and quitting stops the children too.</p>
+      </article>
+      <article class="home-card">
+        <span class="home-kicker">Agents</span>
+        <h3>A prompt they can paste</h3>
+        <p>The dashboard exposes a two-line prompt with this machine’s URL, token, and log path. PUT a stable id to register. POST restart after a code change.</p>
+      </article>
+      <article class="home-card">
+        <span class="home-kicker">Local only</span>
+        <h3>This PC, never a remote</h3>
+        <p>The API binds to 127.0.0.1. Project folders must be absolute local drives. URLs, git remotes, and network shares are rejected.</p>
+      </article>
     </section>
 
-    <section id="services" class="cards"></section>
-    <p class="empty" id="empty" hidden>No services yet. Add one above, or have an agent PUT to <code>/api/v1/services/:id</code>.</p>
+    <section class="steps">
+      <h3>How it works</h3>
+      <ol>
+        <li><strong>Install on Windows.</strong> <code>pnpm start</code> creates config in <code>%LOCALAPPDATA%\ServiceRunner</code>, a tray icon, and a logon shortcut.</li>
+        <li><strong>Add a service.</strong> Point at a folder and the command you would have typed — <code>pnpm dev</code>, <code>npm run start</code>, a Python venv, anything local.</li>
+        <li><strong>Treat it as production.</strong> After an agent changes the app, it asks Service Runner to restart. Logs stay seven days. Reboot and auto-start services come back.</li>
+      </ol>
+    </section>
   </main>
 
-  <aside class="drawer" id="drawer" hidden>
-    <div class="drawer-head">
-      <div>
-        <h2 id="drawer-title">Logs</h2>
-        <p class="muted" id="drawer-sub"></p>
-      </div>
-      <div class="drawer-actions">
-        <select id="log-date"></select>
-        <button type="button" class="btn ghost" id="btn-refresh-logs">Refresh</button>
-        <button type="button" class="btn ghost" id="btn-close-drawer">Close</button>
-      </div>
-    </div>
-    <pre class="log" id="log-view"></pre>
-  </aside>
+  <footer class="home-foot">
+    <span>MIT · <a href="https://github.com/EntangledQuantum/service-runner">EntangledQuantum/service-runner</a></span>
+    <span class="muted">Config and logs never go in git.</span>
+  </footer>
 
-  <div class="modal-bg" id="modal-bg" hidden>
-    <form class="modal" id="form-service">
-      <h2 id="form-title">Add service</h2>
-      <label>Name <input name="name" required placeholder="Life OS" /></label>
-      <label>Stable id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="life-os" /></label>
-      <label>Project folder (absolute local path) <input name="cwd" required placeholder="E:\My_Project\Life_OS" /></label>
-      <label>Command <input name="command" required placeholder="pnpm dev" /></label>
-      <label>Python venv (optional) <input name="venv" placeholder="E:\My_Project\app\.venv" /></label>
-      <label>Group
-        <select name="groupId"><option value="">— none —</option></select>
-      </label>
-      <label>Environment variables <textarea name="env" rows="3" placeholder="PORT=3000&#10;NODE_ENV=development"></textarea></label>
-      <div class="checks">
-        <label class="check"><input type="checkbox" name="autoStart" checked /> Start with Service Runner (including at logon)</label>
-        <label class="check"><input type="checkbox" name="restartOnCrash" /> Restart if it crashes</label>
-      </div>
-      <p class="error" id="form-error" hidden></p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Save</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="modal-bg" id="group-bg" hidden>
-    <form class="modal" id="form-group">
-      <h2>New group</h2>
-      <label>Name <input name="name" required placeholder="Dev stack" /></label>
-      <label>Id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="dev-stack" /></label>
-      <p class="error" id="group-error" hidden></p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-group-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Create</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="modal-bg" id="settings-bg" hidden>
-    <form class="modal" id="form-settings">
-      <h2>Settings</h2>
-      <label>Log retention (days) <input name="logRetentionDays" type="number" min="1" max="365" /></label>
-      <label class="check"><input type="checkbox" name="autoStartOnBoot" /> Start Service Runner when Windows logs on</label>
-      <label class="check"><input type="checkbox" name="openDashboardOnLaunch" /> Open this control panel on launch</label>
-      <p class="muted small">Logs and config live in <code id="config-dir"></code> and are never part of the git repo. Changing the listen port requires a restart.</p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-settings-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Save</button>
-      </div>
-    </form>
-  </div>
-
-  <script>window.__SR__ = %%BOOTSTRAP%%;</script>
-  <script src="/app.js"></script>
+  <script src="grid.js"></script>
+  <script src="landing.js"></script>
 </body>
 </html>

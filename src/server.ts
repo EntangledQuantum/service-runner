@@ -26,6 +26,7 @@ import {
 } from "./process-manager.ts";
 import { HttpError, type AppConfig, type TrayPayload } from "./types.ts";
 import { isLoopbackAddr } from "./security.ts";
+import { collectStats } from "./stats.ts";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -133,6 +134,11 @@ async function routeApi(req: IncomingMessage, res: ServerResponse, url: URL, hoo
       configDir: "%LOCALAPPDATA%\\ServiceRunner",
       uptimeSec: Math.round(process.uptime()),
     });
+    return;
+  }
+
+  if (method === "GET" && p === "/api/v1/stats") {
+    json(res, 200, await collectStats());
     return;
   }
 
@@ -331,8 +337,14 @@ function sse(req: IncomingMessage, res: ServerResponse): void {
 }
 
 function serveStatic(_req: IncomingMessage, res: ServerResponse, path: string): void {
-  if (path === "/" || path === "/index.html") {
-    const htmlPath = join(WEB_DIR, "index.html");
+  if (path === "/dashboard" || path === "/app") {
+    res.writeHead(302, { Location: "/dashboard.html" });
+    res.end();
+    return;
+  }
+
+  if (path === "/dashboard.html") {
+    const htmlPath = join(WEB_DIR, "dashboard.html");
     let html = readFileSync(htmlPath, "utf8");
     const cfg = getConfig();
     const bootstrap = {
@@ -345,6 +357,13 @@ function serveStatic(_req: IncomingMessage, res: ServerResponse, path: string): 
       logRetentionDays: cfg.logRetentionDays,
     };
     html = html.replace("%%BOOTSTRAP%%", JSON.stringify(bootstrap));
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+    res.end(html);
+    return;
+  }
+
+  if (path === "/" || path === "/index.html") {
+    const html = readFileSync(join(WEB_DIR, "index.html"), "utf8");
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(html);
     return;

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard · Service Runner</title>
+  <link rel="icon" href="favicon.ico" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="page-dash">
+  <canvas id="bg-grid"></canvas>
+
+  <header class="top">
+    <a class="brand" href="index.html" aria-label="Service Runner home">
+      <img src="icon.png" alt="" width="36" height="36" />
+      <div>
+        <h1>Service Runner</h1>
+        <p class="muted">Dashboard</p>
+      </div>
+    </a>
+    <div class="top-actions">
+      <button type="button" class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="dash">
+    <p class="offline" id="offline" hidden>
+      This dashboard only runs next to Service Runner on your Windows machine.
+      Clone the repo and start it locally, then open <code>http://127.0.0.1:4780/dashboard.html</code>.
+    </p>
+
+    <section class="status-panel" id="status-panel">
+      <div class="status-head">
+        <div>
+          <p class="eyebrow">Status</p>
+          <h2>Machine snapshot</h2>
+        </div>
+        <div class="status-live" id="status-live"><span class="dot"></span><span id="status-live-label">Idle</span></div>
+      </div>
+      <div class="metrics">
+        <article class="metric">
+          <span class="metric-value" id="m-running">0</span>
+          <span class="metric-label">Running</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-total">0</span>
+          <span class="metric-label">Services</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-crashed">0</span>
+          <span class="metric-label">Crashed</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-uptime">—</span>
+          <span class="metric-label">Uptime</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-mem-services">—</span>
+          <span class="metric-label">Apps memory</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-mem-runner">—</span>
+          <span class="metric-label">Runner memory</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-mem-total">—</span>
+          <span class="metric-label">Total memory</span>
+        </article>
+        <article class="metric">
+          <span class="metric-value" id="m-cpu">—</span>
+          <span class="metric-label">Runner CPU</span>
+        </article>
+      </div>
+      <p class="muted small status-meta" id="status-meta"></p>
+    </section>
+
+    <section class="dash-toolbar">
+      <div class="dash-actions">
+        <button type="button" class="btn primary" id="btn-add">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Add service
+        </button>
+        <button type="button" class="btn" id="btn-group">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h7v11H4zM13 7h7v5h-7zM13 14h7v4h-7z"/></svg>
+          New group
+        </button>
+      </div>
+      <div class="tabs" id="group-tabs"></div>
+    </section>
+
+    <section id="services" class="cards"></section>
+    <p class="empty" id="empty" hidden>No services yet. Add one, or have an agent PUT to <code>/api/v1/services/:id</code>.</p>
+
+    <section class="prompt-card" id="prompt-card">
+      <div class="prompt-head">
+        <div>
+          <h2>Agent prompt</h2>
+          <p class="muted">Paste this into any coding agent so it can register, update, and restart an app on this machine.</p>
+        </div>
+        <button type="button" class="btn primary" id="btn-copy">Copy prompt</button>
+      </div>
+      <pre id="prompt-text" class="prompt-text"></pre>
+    </section>
+  </main>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawer-title">Logs</h2>
+        <p class="muted" id="drawer-sub"></p>
+      </div>
+      <div class="drawer-actions">
+        <select id="log-date"></select>
+        <button type="button" class="btn ghost" id="btn-refresh-logs">Refresh</button>
+        <button type="button" class="btn ghost" id="btn-close-drawer">Close</button>
+      </div>
+    </div>
+    <pre class="log" id="log-view"></pre>
+  </aside>
+
+  <div class="modal-bg" id="modal-bg" hidden>
+    <form class="modal" id="form-service">
+      <h2 id="form-title">Add service</h2>
+      <label>Name <input name="name" required placeholder="Life OS" /></label>
+      <label>Stable id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="life-os" /></label>
+      <label>Project folder (absolute local path) <input name="cwd" required placeholder="E:\My_Project\Life_OS" /></label>
+      <label>Command <input name="command" required placeholder="pnpm dev" /></label>
+      <label>Python venv (optional) <input name="venv" placeholder="E:\My_Project\app\.venv" /></label>
+      <label>Group
+        <select name="groupId"><option value="">— none —</option></select>
+      </label>
+      <label>Environment variables <textarea name="env" rows="3" placeholder="PORT=3000&#10;NODE_ENV=development"></textarea></label>
+      <div class="checks">
+        <label class="check"><input type="checkbox" name="autoStart" checked /> Start with Service Runner (including at logon)</label>
+        <label class="check"><input type="checkbox" name="restartOnCrash" /> Restart if it crashes</label>
+      </div>
+      <p class="error" id="form-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal-bg" id="group-bg" hidden>
+    <form class="modal" id="form-group">
+      <h2>New group</h2>
+      <label>Name <input name="name" required placeholder="Dev stack" /></label>
+      <label>Id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="dev-stack" /></label>
+      <p class="error" id="group-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-group-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal-bg" id="settings-bg" hidden>
+    <form class="modal" id="form-settings">
+      <h2>Settings</h2>
+      <label>Log retention (days) <input name="logRetentionDays" type="number" min="1" max="365" /></label>
+      <label class="check"><input type="checkbox" name="autoStartOnBoot" /> Start Service Runner when Windows logs on</label>
+      <label class="check"><input type="checkbox" name="openDashboardOnLaunch" /> Open the site in a browser on launch</label>
+      <p class="muted small">Logs and config live in <code id="config-dir"></code> and are never part of the git repo. Changing the listen port requires a restart.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="btn-settings-cancel">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="application/json" id="sr-bootstrap">%%BOOTSTRAP%%</script>
+  <script src="grid.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

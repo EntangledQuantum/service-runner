@@ -25,9 +25,13 @@ function Invoke-Api {
   }
 }
 
+function Open-Home {
+  Start-Process ($script:RunnerBase + "/")
+}
+
 function Open-Dashboard {
   param([string]$Hash = "")
-  $url = $script:RunnerBase + "/"
+  $url = $script:RunnerBase + "/dashboard.html"
   if ($Hash) { $url = $url + "#" + $Hash }
   Start-Process $url
 }
@@ -75,8 +79,12 @@ function Add-Disabled([string]$text) {
 $menu.add_Opening({
   $menu.Items.Clear()
 
+  $home = New-Object System.Windows.Forms.ToolStripMenuItem
+  $home.Text = "Open home"
+  $home.add_Click({ Open-Home })
+  [void]$menu.Items.Add($home)
   $open = New-Object System.Windows.Forms.ToolStripMenuItem
-  $open.Text = "Open Control Panel"
+  $open.Text = "Open dashboard"
   $open.add_Click({ Open-Dashboard })
   [void]$menu.Items.Add($open)
   [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
@@ -172,11 +180,11 @@ $menu.add_Opening({
 $notify.add_MouseUp({
   param($sender, $e)
   if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
-    Open-Dashboard
+    Open-Home
   }
 })
 
-$notify.add_DoubleClick({ Open-Dashboard })
+$notify.add_DoubleClick({ Open-Home })
 
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 4000

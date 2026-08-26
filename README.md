@@ -2,16 +2,23 @@
 
 Windows tray supervisor for the local web apps you (and your coding agents) keep running with `pnpm dev`, `npm run dev`, `python …`, and friends.
 
-One process. One tray icon. One control panel. No extra PowerShell windows left open.
+One process. One tray icon. One site. No extra PowerShell windows left open.
 
 Service Runner is the **local production host** for long-running apps on this machine. Agents add a project once, you reboot, it comes back. After they change code, they restart it through the API instead of babysitting a terminal.
 
-![Control panel](docs/screenshots/dashboard.png)
+Public landing page: [entangledquantum.github.io/service-runner](https://entangledquantum.github.io/service-runner/)
+
+On GitHub Pages you get the product site. **Open dashboard** only appears when the same site is served from `127.0.0.1` next to the tray app. Click the Service Runner mark (top left) anytime to come back home.
+
+![Landing](docs/screenshots/landing.png)
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ## What you get
 
-- A **tray icon**. Left-click opens the control panel at `http://127.0.0.1:4780`. Right-click starts/stops groups and services, stops everything, or quits Service Runner (which stops every child too).
-- A **dashboard** to add services, group them, watch logs, and copy an agent prompt.
+- A **tray icon**. Left-click opens the home page at `http://127.0.0.1:4780`. Right-click opens the dashboard, starts/stops groups and services, stops everything, or quits Service Runner (which stops every child too).
+- A **home page** that explains the product (also published on GitHub Pages) and, locally, a button into the dashboard.
+- A **dashboard** with a status panel first (running count, memory, CPU, uptime), then services, then the agent prompt at the bottom.
 - A **local HTTP API** so any agent can register an app with a stable id, update it, and restart it.
 - **Logs** for the last 7 days (configurable), stored outside the git repo.
 - **Start at Windows logon**, then auto-start every service that has that flag on.
@@ -34,7 +41,7 @@ The first launch:
 
 1. Creates `%LOCALAPPDATA%\ServiceRunner\config.json` if it is missing
 2. Puts a shortcut in your Startup folder so it returns after reboot
-3. Shows a tray icon and opens the control panel
+3. Shows a tray icon and opens the home page. Open dashboard from there.
 
 Runtime files (**not in git**, never commit them):
 
@@ -46,7 +53,7 @@ Runtime files (**not in git**, never commit them):
 
 ## Agent prompt
 
-The control panel shows a two-to-three line prompt that already contains **this machine’s URL, token, and log path**. Copy it. Hand it to an agent working in a project folder.
+The dashboard (below the service list) shows a two-to-three line prompt that already contains **this machine’s URL, token, and log path**. Copy it. Hand it to an agent working in a project folder.
 
 Typical shape (values change with your port, token, and retention):
 
@@ -74,6 +81,7 @@ All API routes bind to **127.0.0.1 only**. Send `Authorization: Bearer <token>` 
 | `POST` | `/api/v1/groups/:id/start` | Start every service in the group |
 | `POST` | `/api/v1/groups/:id/stop` | Stop the group |
 | `GET` | `/api/v1/prompt` | The live agent prompt + example payload |
+| `GET` | `/api/v1/stats` | Running counts, uptime, CPU, memory |
 | `POST` | `/api/v1/stop-all` | Stop every service |
 | `POST` | `/api/v1/shutdown` | Stop every service and exit Service Runner |
 
@@ -101,7 +109,8 @@ Invoke-RestMethod -Method PUT `
 
 | Action | Result |
 | --- | --- |
-| Left-click | Open the control panel |
+| Left-click | Open the home page |
+| Right-click → Open dashboard | Control panel |
 | Right-click → Groups | Start / stop a whole group |
 | Right-click → a service | Start / stop / restart |
 | Stop all services | Children die; Service Runner stays |
@@ -111,7 +120,7 @@ Invoke-RestMethod -Method PUT `
 
 - Log retention (default **7 days**)
 - Start Service Runner at Windows logon
-- Open the control panel on launch
+- Open the site in a browser on launch
 
 ## Development
 

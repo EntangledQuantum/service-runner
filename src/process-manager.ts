@@ -72,6 +72,15 @@ export function listServices(): ServiceView[] {
   return cfgRef.services.map(viewOf);
 }
 
+export function liveRootPids(): number[] {
+  const out: number[] = [];
+  for (const s of cfgRef.services) {
+    const pid = rt(s.id).pid;
+    if (pid) out.push(pid);
+  }
+  return out;
+}
+
 export function getService(id: string): ServiceView {
   const s = cfgRef.services.find((x) => x.id === id);
   if (!s) throw bad(404, `unknown service '${id}'`);
