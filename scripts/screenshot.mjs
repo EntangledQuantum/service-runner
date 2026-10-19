@@ -1,65 +1,61 @@
 /**
- * Capture landing + dashboard screenshots into docs/screenshots/.
- * Expects Service Runner to already be listening on 127.0.0.1:4780.
+ * Capture the README screenshots into docs/screenshots/ from demo data.
+ * Starts scripts/demo-server.mjs (ports 4798/4799) — never touches a running Service Runner.
  */
 import { chromium } from "playwright";
-import { mkdirSync, readFileSync, existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = join(root, "docs", "screenshots");
+const here = dirname(fileURLToPath(import.meta.url));
+const outDir = join(here, "..", "docs", "screenshots");
 mkdirSync(outDir, { recursive: true });
 
-const cfgPath = join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "ServiceRunner", "config.json");
-if (!existsSync(cfgPath)) {
-  console.error("Service Runner config not found. Start the app first.");
-  process.exit(1);
-}
-const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-const base = `http://127.0.0.1:${cfg.port || 4780}`;
-
-const browser = await chromium.launch({
-  headless: true,
-  channel: process.env.SR_BROWSER || "msedge",
+const demo = spawn(process.execPath, [join(here, "demo-server.mjs")], { stdio: ["ignore", "pipe", "inherit"] });
+await new Promise((resolve, reject) => {
+  let seen = "";
+  demo.stdout.on("data", (d) => {
+    seen += d;
+    if (seen.includes("4798") && seen.includes("4799")) resolve();
+  });
+  demo.once("exit", (code) => reject(new Error(`demo server exited (${code}) — are ports 4798/4799 free?`)));
 });
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
-await page.goto(base + "/", { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".hero-title");
-await page.mouse.move(720, 280);
-await page.waitForTimeout(700);
-await page.screenshot({ path: join(outDir, "landing.png"), fullPage: true });
-console.log("wrote docs/screenshots/landing.png");
+const browser = await chromium.launch({ headless: true, channel: process.env.SR_BROWSER || "msedge" });
+const open = async (url) => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, deviceScaleFactor: 1, colorScheme: "dark" });
+  return { ctx, page: await ctx.newPage(), url };
+};
 
-await page.goto(base + "/dashboard.html", { waitUntil: "domcontentloaded" });
-await page.waitForSelector(".status-panel");
-await page.waitForSelector(".card");
-await page.mouse.move(420, 260);
-await page.waitForTimeout(1600);
-await page.evaluate(() => {
-  const el = document.getElementById("prompt-text");
-  if (el) el.textContent = el.textContent.replace(/Bearer \S+/g, "Bearer <token>");
-});
-await page.screenshot({ path: join(outDir, "dashboard.png"), fullPage: true });
-console.log("wrote docs/screenshots/dashboard.png");
-
-const card = page.locator(".card").first();
-if (await card.count()) {
-  await card.locator('[data-act="logs"]').click();
-  await page.waitForSelector("#drawer:not([hidden])");
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: join(outDir, "logs.png") });
-  console.log("wrote docs/screenshots/logs.png");
-  await page.locator("#btn-close-drawer").click();
-  await page.waitForTimeout(200);
+try {
+  {
+    const { ctx, page } = await open();
+    await page.goto("http://127.0.0.1:4799/dashboard.html");
+    await page.waitForSelector(".svc");
+    await page.click('.svc[data-id="notes"] .svc-name');
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(outDir, "control-panel.png") });
+    console.log("wrote docs/screenshots/control-panel.png");
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await open();
+    await page.goto("http://127.0.0.1:4798/");
+    await page.evaluate(() =>
+      fetch("/_portal/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "demo-access-token", deviceName: "Edge on Windows" }),
+      }),
+    );
+    await page.reload();
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(outDir, "portal-home.png") });
+    console.log("wrote docs/screenshots/portal-home.png");
+    await ctx.close();
+  }
+} finally {
+  await browser.close();
+  demo.kill();
 }
-
-await page.locator("#btn-add").click();
-await page.waitForSelector("#modal-bg:not([hidden])");
-await page.waitForTimeout(300);
-await page.screenshot({ path: join(outDir, "add-service.png") });
-console.log("wrote docs/screenshots/add-service.png");
-
-await browser.close();
