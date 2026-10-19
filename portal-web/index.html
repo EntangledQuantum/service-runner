@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Apps</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="same-origin" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#0b0c10" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Apps" />
+  <link rel="manifest" href="/_portal/manifest.webmanifest" />
+  <link rel="icon" href="/_portal/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/_portal/icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="/_portal/icon-180.png" />
+  <link rel="stylesheet" href="/_portal/portal.css" />
+  <script src="/_portal/portal.js" defer></script>
+</head>
+<body>
+  <div class="boot" id="boot" aria-hidden="true"><span class="spin"></span></div>
+
+  <main class="login" id="login" hidden>
+    <form class="card login-card" id="login-form" novalidate>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><rect x="5" y="5" width="9.5" height="9.5" rx="3"/><rect x="17.5" y="5" width="9.5" height="9.5" rx="3" class="b"/><rect x="5" y="17.5" width="9.5" height="9.5" rx="3" class="b"/><rect x="17.5" y="17.5" width="9.5" height="9.5" rx="3" class="c"/></svg>
+      </div>
+      <h1>Sign in</h1>
+      <p class="sub">Enter your access token to open your apps. You'll stay signed in on this device.</p>
+
+      <input type="text" name="username" value="portal" autocomplete="username" class="vh" tabindex="-1" aria-hidden="true" readonly />
+      <label class="field">
+        <span>Access token</span>
+        <span class="input-wrap">
+          <input id="token" name="token" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+          <button type="button" class="reveal" id="reveal" aria-label="Show token" aria-pressed="false">
+            <svg viewBox="0 0 24 24" class="eye"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </span>
+      </label>
+      <label class="field">
+        <span>Device name</span>
+        <input id="device" name="device" type="text" maxlength="60" autocomplete="off" spellcheck="false" />
+      </label>
+
+      <p class="err" id="login-err" role="alert" hidden></p>
+
+      <button class="go" type="submit" id="login-btn">
+        <span class="go-label">Continue</span>
+        <svg viewBox="0 0 24 24" class="arrow" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+        <span class="spin sm" aria-hidden="true"></span>
+      </button>
+    </form>
+  </main>
+
+  <div class="home" id="home" hidden>
+    <header class="bar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" class="brand-mark" aria-hidden="true"><rect x="5" y="5" width="9.5" height="9.5" rx="3"/><rect x="17.5" y="5" width="9.5" height="9.5" rx="3" class="b"/><rect x="5" y="17.5" width="9.5" height="9.5" rx="3" class="b"/><rect x="17.5" y="17.5" width="9.5" height="9.5" rx="3" class="c"/></svg>
+        <span id="title">Apps</span>
+      </div>
+      <button type="button" class="signout" id="signout">Sign out</button>
+    </header>
+
+    <section class="hello">
+      <p class="when" id="when"></p>
+      <h1 id="greeting">Hello</h1>
+      <p class="summary" id="summary"></p>
+    </section>
+
+    <ul class="tiles" id="tiles" aria-label="Apps"></ul>
+
+    <div class="empty" id="empty" hidden>
+      <p>No apps are published yet.</p>
+      <p class="muted">Publish one from Service Runner on the host machine and it appears here.</p>
+    </div>
+    <p class="err home-err" id="home-err" role="alert" hidden></p>
+
+    <footer class="foot" id="foot"></footer>
+  </div>
+
+  <noscript><p class="noscript">This page needs JavaScript.</p></noscript>
+</body>
+</html>

@@ -16,3 +16,22 @@ describe("data dir", () => {
     assert.equal(sanitizeIdForPath("a/b"), "a_b");
   });
 });
+
+describe("SERVICE_RUNNER_DATA_DIR", () => {
+  it("overrides the data dir for isolated instances", async () => {
+    const { mkdtempSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = join(mkdtempSync(join(tmpdir(), "sr-data-")), "data");
+    const prev = process.env.SERVICE_RUNNER_DATA_DIR;
+    process.env.SERVICE_RUNNER_DATA_DIR = dir;
+    try {
+      assert.equal(dataDir(), dir);
+      assert.equal(configPath(), join(dir, "config.json"));
+    } finally {
+      if (prev === undefined) delete process.env.SERVICE_RUNNER_DATA_DIR;
+      else process.env.SERVICE_RUNNER_DATA_DIR = prev;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -12,7 +12,12 @@ export function agentPrompt(cfg: AppConfig): string {
     `Service Runner is the local production host for long-running apps on this Windows machine (${url}). Do not leave a terminal open — register the app so it survives reboots and can be restarted after you change code.`,
     `Add or update with PUT ${url}/api/v1/services/<stable-id> JSON {"name":"<app>","cwd":"<absolute local path>","command":"<how to run, e.g. pnpm dev>","autoStart":true} and header Authorization: Bearer ${cfg.token}. Restart after changes: POST ${url}/api/v1/services/<id>/restart (same header).`,
     `Local Windows paths only — no URLs, no network shares. Logs: ${logsDirPrompt()}\\<id>\\ (last ${cfg.logRetentionDays} days). Config: ${configDirPrompt()}\\config.json (not in git).`,
+    `Only if the user asks for the app to be public, add "publish":{"path":"/<lowercase-segment>","upstream":"http://127.0.0.1:<app port>","stripPrefix":true} to the same PUT; it is then served behind the portal login at ${portalBase(cfg)}/<segment>/, so the app must work behind that path prefix (relative asset URLs or a base-path setting).`,
   ].join(" ");
+}
+
+function portalBase(cfg: AppConfig): string {
+  return cfg.portal.publicUrl || "<portal URL>";
 }
 
 export function promptPayload(cfg: AppConfig) {

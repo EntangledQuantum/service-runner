@@ -6,7 +6,11 @@
   <title>Service Runner — local production host</title>
   <meta name="description" content="Windows tray supervisor for long-running local web apps. One control panel, one API, no extra terminals." />
   <link rel="icon" href="favicon.ico" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="landing.css" />
+  <script>
+    /* Locally, / is the control panel. The marketing page is only for GitHub Pages. */
+    if (/^(127\.0\.0\.1|localhost|\[::1\])$/.test(location.hostname)) location.replace("dashboard.html" + location.hash);
+  </script>
 </head>
 <body class="page-home">
   <canvas id="bg-grid"></canvas>

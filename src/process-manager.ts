@@ -3,13 +3,26 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { bus } from "./events.ts";
 import { appendLog, LineBuffer } from "./logs.ts";
-import { assertLocalDir, assertOptionalLocalDir, assertServiceId, slugify } from "./security.ts";
+import { assertLocalDir, assertLoopbackOrigin, assertOptionalLocalDir, assertServiceId, slugify } from "./security.ts";
 import { saveConfig } from "./config.ts";
-import { bad, type AppConfig, type RuntimeState, type ServiceConfig, type ServiceStatus, type ServiceView } from "./types.ts";
+import { assertPublish } from "./portal/publish.ts";
+import { probeUrl } from "./probe.ts";
+import {
+  bad,
+  type AppConfig,
+  type PublishConfig,
+  type RuntimeState,
+  type ServiceConfig,
+  type ServiceKind,
+  type ServiceStatus,
+  type ServiceView,
+} from "./types.ts";
 
 const URL_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:\/[^\s"'<>]*)?/gi;
 const HOSTPORT_RE = /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})/gi;
 const WIN_CMDS = new Set(["npm", "npx", "pnpm", "yarn", "bun", "corepack"]);
+const EXTERNAL_MSG = "external service is managed outside Service Runner";
+const HEALTH_EVERY = 15_000;
 
 interface Live {
   child: ChildProcess;
@@ -101,6 +114,9 @@ export function listGroups() {
 export interface UpsertBody {
   id?: string;
   name?: string;
+  kind?: ServiceKind;
+  url?: string | null;
+  publish?: unknown;
   cwd?: string;
   command?: string;
   args?: string[] | string;
@@ -122,9 +138,33 @@ export function upsertService(body: UpsertBody, { createOnly = false, idFromRout
   const existing = cfgRef.services.find((s) => s.id === id);
   if (existing && createOnly) throw bad(409, `service '${id}' already exists — use PUT to update it`);
 
-  const cwd = assertLocalDir(body.cwd ?? existing?.cwd, "cwd");
+  if (body.kind !== undefined && body.kind !== "managed" && body.kind !== "external") {
+    throw bad(400, 'kind must be "managed" or "external"');
+  }
+  const kind: ServiceKind = body.kind ?? existing?.kind ?? "managed";
+  const external = kind === "external";
+  const reserved = [cfgRef.port, cfgRef.portal.port];
+
+  const publish: PublishConfig | null =
+    body.publish !== undefined
+      ? assertPublish(body.publish, { reservedPorts: reserved, others: cfgRef.services.filter((s) => s.id !== id) })
+      : existing?.publish ?? null;
+
+  let url: string | undefined;
+  if (external) {
+    const rawUrl = body.url !== undefined ? body.url : existing?.url;
+    url = rawUrl ? assertLoopbackOrigin(rawUrl, "url", reserved, { allowPath: true }) : undefined;
+    if (!url && !publish) throw bad(400, "external services need a url (or a publish.upstream) to health-check");
+  }
+
+  // External apps run elsewhere: cwd/command are optional and never executed.
+  const cwd = external
+    ? body.cwd
+      ? assertLocalDir(body.cwd, "cwd")
+      : existing?.cwd ?? ""
+    : assertLocalDir(body.cwd ?? existing?.cwd, "cwd");
   const command = String(body.command ?? existing?.command ?? "").trim();
-  if (!command) throw bad(400, "command is required (e.g. \"pnpm dev\" or \"python -m uvicorn app:app\")");
+  if (!command && !external) throw bad(400, "command is required (e.g. \"pnpm dev\" or \"python -m uvicorn app:app\")");
 
   const args = normalizeArgs(body.args !== undefined ? body.args : existing?.args);
   const venv = assertOptionalLocalDir(body.venv ?? existing?.venv, "venv");
@@ -133,6 +173,9 @@ export function upsertService(body: UpsertBody, { createOnly = false, idFromRout
   const next: ServiceConfig = {
     id,
     name: body.name !== undefined ? name : existing?.name ?? name,
+    kind,
+    url,
+    publish,
     cwd,
     command,
     args,
@@ -153,6 +196,7 @@ export function upsertService(body: UpsertBody, { createOnly = false, idFromRout
     updatedAt: now,
   };
 
+  const wasManagedLive = Boolean(existing) && !isExternal(existing!) && live.has(id);
   if (existing) {
     const idx = cfgRef.services.findIndex((s) => s.id === id);
     cfgRef.services[idx] = next;
@@ -161,6 +205,19 @@ export function upsertService(body: UpsertBody, { createOnly = false, idFromRout
     runtime.set(id, emptyRuntime());
   }
   persist();
+  if (JSON.stringify(existing?.publish ?? null) !== JSON.stringify(publish)) bus.emitEvent({ type: "portal" });
+
+  if (external) {
+    // Switched managed → external: stop our copy; the health probe owns the status from now on.
+    const l = wasManagedLive ? live.get(id) : undefined;
+    if (l) {
+      l.stopping = true;
+      killTree(l.child.pid);
+    }
+    void probeOne(next);
+    return viewOf(next);
+  }
+  if (existing && isExternal(existing)) setStatus(id, "stopped", { pid: null });
 
   const changed =
     existing &&
@@ -180,11 +237,12 @@ export function upsertService(body: UpsertBody, { createOnly = false, idFromRout
 export function deleteService(id: string): void {
   const s = cfgRef.services.find((x) => x.id === id);
   if (!s) throw bad(404, `unknown service '${id}'`);
-  if (isActive(id)) stopService(id, { wait: false });
+  if (!isExternal(s) && isActive(id)) stopService(id, { wait: false });
   cfgRef.services = cfgRef.services.filter((x) => x.id !== id);
   runtime.delete(id);
   live.delete(id);
   persist();
+  if (s.publish) bus.emitEvent({ type: "portal" });
 }
 
 export function upsertGroup(body: { id?: string; name?: string; color?: string }, idFromRoute?: string) {
@@ -258,14 +316,25 @@ function splitArgs(s: string): string[] {
   return out;
 }
 
+export function isExternal(s: Pick<ServiceConfig, "kind">): boolean {
+  return s.kind === "external";
+}
+
+/** The service, if Service Runner owns its process. External ones → 400. */
+function managed(id: string): ServiceConfig {
+  const s = cfgRef.services.find((x) => x.id === id);
+  if (!s) throw bad(404, `unknown service '${id}'`);
+  if (isExternal(s)) throw bad(400, EXTERNAL_MSG);
+  return s;
+}
+
 function isActive(id: string): boolean {
   const st = rt(id).status;
   return st === "running" || st === "starting" || st === "stopping";
 }
 
 export function startService(id: string): ServiceView {
-  const s = cfgRef.services.find((x) => x.id === id);
-  if (!s) throw bad(404, `unknown service '${id}'`);
+  const s = managed(id);
   if (!s.enabled) throw bad(400, `service '${id}' is disabled`);
   if (isActive(id) && live.get(id)?.child && !live.get(id)?.child.killed) {
     return viewOf(s);
@@ -275,8 +344,7 @@ export function startService(id: string): ServiceView {
 }
 
 export function stopService(id: string, { wait = true }: { wait?: boolean } = {}): ServiceView {
-  const s = cfgRef.services.find((x) => x.id === id);
-  if (!s) throw bad(404, `unknown service '${id}'`);
+  const s = managed(id);
   const l = live.get(id);
   if (!l) {
     setStatus(id, "stopped", { pid: null });
@@ -293,8 +361,7 @@ export function stopService(id: string, { wait = true }: { wait?: boolean } = {}
 }
 
 export async function restartService(id: string): Promise<ServiceView> {
-  const s = cfgRef.services.find((x) => x.id === id);
-  if (!s) throw bad(404, `unknown service '${id}'`);
+  const s = managed(id);
   if (isActive(id)) {
     const l = live.get(id);
     if (l) {
@@ -311,7 +378,7 @@ export async function restartService(id: string): Promise<ServiceView> {
 export async function startGroup(groupId: string): Promise<ServiceView[]> {
   if (!cfgRef.groups.some((g) => g.id === groupId)) throw bad(404, `unknown group '${groupId}'`);
   const out: ServiceView[] = [];
-  for (const s of cfgRef.services.filter((x) => x.groupId === groupId && x.enabled)) {
+  for (const s of cfgRef.services.filter((x) => x.groupId === groupId && x.enabled && !isExternal(x))) {
     try {
       out.push(startService(s.id));
     } catch (err) {
@@ -324,7 +391,7 @@ export async function startGroup(groupId: string): Promise<ServiceView[]> {
 export async function stopGroup(groupId: string): Promise<ServiceView[]> {
   if (!cfgRef.groups.some((g) => g.id === groupId)) throw bad(404, `unknown group '${groupId}'`);
   const out: ServiceView[] = [];
-  for (const s of cfgRef.services.filter((x) => x.groupId === groupId)) {
+  for (const s of cfgRef.services.filter((x) => x.groupId === groupId && !isExternal(x))) {
     out.push(stopService(s.id, { wait: false }));
   }
   return out;
@@ -332,7 +399,7 @@ export async function stopGroup(groupId: string): Promise<ServiceView[]> {
 
 export function stopAll({ wait = false }: { wait?: boolean } = {}): void {
   for (const s of cfgRef.services) {
-    if (isActive(s.id)) stopService(s.id, { wait });
+    if (!isExternal(s) && isActive(s.id)) stopService(s.id, { wait });
   }
 }
 
@@ -348,7 +415,7 @@ export async function stopAllAndWait(timeoutMs = 8000): Promise<void> {
 
 export function startAutoServices(): void {
   for (const s of cfgRef.services) {
-    if (s.enabled && s.autoStart) {
+    if (s.enabled && s.autoStart && !isExternal(s)) {
       try {
         startService(s.id);
       } catch (err) {
@@ -446,7 +513,7 @@ function scheduleCrashRestart(s: ServiceConfig): void {
   appendLog(s.id, "sys", `crash restart ${next}/5 in ${delay}ms`);
   setTimeout(() => {
     const current = cfgRef.services.find((x) => x.id === s.id);
-    if (!current || !current.enabled || !current.restartOnCrash) return;
+    if (!current || isExternal(current) || !current.enabled || !current.restartOnCrash) return;
     if (isActive(s.id)) return;
     const r = rt(s.id);
     r.restarts += 1;
@@ -561,4 +628,34 @@ function killTreeAndWait(pid: number | undefined, timeoutMs: number): Promise<vo
       resolve();
     });
   });
+}
+
+// ── external services: health probes instead of processes ──────────────────
+
+let healthTimer: NodeJS.Timeout | null = null;
+
+async function probeOne(s: ServiceConfig): Promise<void> {
+  const target = s.url || s.publish?.upstream;
+  const up = target ? await probeUrl(target, 2000) : false;
+  const current = cfgRef.services.find((x) => x.id === s.id);
+  if (!current || !isExternal(current)) return;
+  const next: ServiceStatus = up ? "running" : "stopped";
+  const r = rt(s.id);
+  if (r.status !== next) {
+    if (up) r.startedAt = new Date().toISOString();
+    else r.exitedAt = new Date().toISOString();
+    setStatus(s.id, next, { pid: null });
+  }
+}
+
+export function probeExternal(): Promise<void> {
+  return Promise.all(cfgRef.services.filter(isExternal).map(probeOne)).then(() => undefined);
+}
+
+/** Probe external services now and every 15 s. */
+export function startHealthProbes(): void {
+  if (healthTimer) return;
+  void probeExternal();
+  healthTimer = setInterval(() => void probeExternal(), HEALTH_EVERY);
+  healthTimer.unref();
 }

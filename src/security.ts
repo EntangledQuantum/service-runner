@@ -104,3 +104,53 @@ export function slugify(name: string): string {
     .slice(0, 48);
   return s || "service";
 }
+
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+export function isLoopbackHost(hostname: string): boolean {
+  return LOOPBACK_HOSTS.has(hostname.toLowerCase());
+}
+
+/**
+ * Portal upstreams and external health URLs must stay on this machine.
+ * Returns the bare origin ("http://127.0.0.1:3000"), or the full URL when `allowPath`.
+ * `reservedPorts` = control panel + portal; never proxy to ourselves.
+ */
+export function assertLoopbackOrigin(
+  input: unknown,
+  field: string,
+  reservedPorts: number[] = [],
+  { allowPath = false }: { allowPath?: boolean } = {},
+): string {
+  if (typeof input !== "string" || !input.trim()) {
+    throw bad(400, `${field} is required, e.g. http://127.0.0.1:3000`);
+  }
+  let u: URL;
+  try {
+    u = new URL(input.trim());
+  } catch {
+    throw bad(400, `${field} must be a URL like http://127.0.0.1:3000`);
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw bad(400, `${field} must be http:// or https://`);
+  if (u.username || u.password) throw bad(400, `${field} cannot contain credentials`);
+  if (!isLoopbackHost(u.hostname)) {
+    throw bad(400, `${field} must be loopback (127.0.0.1, localhost or [::1]) — the portal only proxies to this machine`);
+  }
+  if (!allowPath && ((u.pathname && u.pathname !== "/") || u.search || u.hash)) {
+    throw bad(400, `${field} must be an origin only (no path or query), e.g. http://127.0.0.1:3000`);
+  }
+  const port = Number(u.port || (u.protocol === "https:" ? 443 : 80));
+  if (reservedPorts.includes(port)) {
+    throw bad(400, `${field} cannot point at Service Runner's own control-panel or portal port (${port})`);
+  }
+  if (allowPath) {
+    u.hash = "";
+    return u.pathname === "/" && !u.search ? u.origin : u.href;
+  }
+  return u.origin;
+}
+
+export function originPort(origin: string): number {
+  const u = new URL(origin);
+  return Number(u.port || (u.protocol === "https:" ? 443 : 80));
+}

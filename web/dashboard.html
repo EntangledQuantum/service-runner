@@ -1,182 +1,502 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard · Service Runner</title>
+  <title>Service Runner</title>
+  <meta name="color-scheme" content="dark light" />
   <link rel="icon" href="favicon.ico" />
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="page-dash">
-  <canvas id="bg-grid"></canvas>
+<body>
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7.5 5.8v12.4a.8.8 0 0 0 1.2.7l10-6.2a.8.8 0 0 0 0-1.4l-10-6.2a.8.8 0 0 0-1.2.7z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-restart" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="m7 9.5 3 2.5-3 2.5M12.5 15h4.5"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4.5 19.5h3.8L19 8.8a2.7 2.7 0 0 0-3.8-3.8L4.5 15.7z"/><path d="m13.6 6.6 3.8 3.8"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1z"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l1 12.2A1.5 1.5 0 0 0 9 20.5h6a1.5 1.5 0 0 0 1.5-1.3l1-12.2M9.5 7V4.5h5V7"/></symbol>
+      <symbol id="i-wrap" viewBox="0 0 24 24"><path d="M4 6h16M4 12h12.5a3 3 0 0 1 0 6H13m0 0 2-2m-2 2 2 2M4 18h5"/></symbol>
+      <symbol id="i-follow" viewBox="0 0 24 24"><path d="M12 4v11m-5-4.5 5 5 5-5M5 20h14"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M8 16 16 8M9.5 8H16v6.5"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.6 3.4 5.4 3.4 8.5s-1 5.9-3.4 8.5c-2.4-2.6-3.4-5.4-3.4-8.5s1-5.9 3.4-8.5z"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></symbol>
+      <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m6.5 14.5 5.5-5.5 5.5 5.5"/></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="4"/><path d="m11 12.5 8-8M15.5 8l2.5 2.5M13.5 10l2 2"/></symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17M10.6 6.1A9.6 9.6 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-2.7 3.4M6.6 6.7C4 8.5 2.5 12 2.5 12S6 18 12 18c1.6 0 3-.4 4.3-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+      <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 4 8.5 4.5L12 13 3.5 8.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5"/></symbol>
+      <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3.5v8"/><path d="M6.6 7.2a7.5 7.5 0 1 0 10.8 0"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 19 6v5.5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/></symbol>
+      <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2.5" y="5" width="13.5" height="10" rx="1.8"/><path d="M6 19h6.5"/><rect x="17.5" y="9" width="4" height="10.5" rx="1.2"/></symbol>
+      <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14m-6-6 6 6 6-6"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10.5 21 19 10.5h-6z"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.8"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/></symbol>
+      <symbol id="i-dots" viewBox="0 0 24 24"><path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    </defs>
+  </svg>
 
-  <header class="top">
-    <a class="brand" href="index.html" aria-label="Service Runner home">
-      <img src="icon.png" alt="" width="36" height="36" />
-      <div>
-        <h1>Service Runner</h1>
-        <p class="muted">Dashboard</p>
+  <div class="app" id="app">
+    <header class="topbar">
+      <a class="brand" href="#/services" aria-label="Service Runner">
+        <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" class="mark-box"/><path d="m8 9 3 3-3 3" class="mark-chev"/><path d="M13 15h3.5" class="mark-cur"/></svg>
+        <span class="brand-name">Service Runner</span>
+        <span class="brand-ver mono" id="brand-ver"></span>
+      </a>
+
+      <nav class="views" aria-label="Sections">
+        <a href="#/services" class="view-tab" data-view="services"><svg class="i"><use href="#i-list"/></svg><span>Services</span></a>
+        <a href="#/portal" class="view-tab" data-view="portal"><svg class="i"><use href="#i-globe"/></svg><span>Portal</span><i class="tab-dot" id="portal-dot" hidden></i></a>
+        <a href="#/agent" class="view-tab" data-view="agent"><svg class="i"><use href="#i-bolt"/></svg><span>Agent</span></a>
+      </nav>
+
+      <div class="top-right">
+        <span class="conn" id="conn" data-state="connecting" title="Live updates"><i></i><span id="conn-label">connecting</span></span>
+        <button type="button" class="icon-btn" id="btn-keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><svg class="i"><use href="#i-keyboard"/></svg></button>
+        <button type="button" class="icon-btn" id="btn-theme" title="Toggle theme (t)" aria-label="Toggle theme"><svg class="i only-dark"><use href="#i-sun"/></svg><svg class="i only-light"><use href="#i-moon"/></svg></button>
+        <button type="button" class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings"><svg class="i"><use href="#i-gear"/></svg></button>
       </div>
-    </a>
-    <div class="top-actions">
-      <button type="button" class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>
-        </svg>
-      </button>
-    </div>
-  </header>
+    </header>
 
-  <main class="dash">
-    <p class="offline" id="offline" hidden>
-      This dashboard only runs next to Service Runner on your Windows machine.
-      Clone the repo and start it locally, then open <code>http://127.0.0.1:4780/dashboard.html</code>.
-    </p>
+    <section class="statbar" id="statbar" aria-label="Machine snapshot">
+      <div class="stat stat-run"><span class="stat-k">running</span><span class="stat-v"><b id="m-running">0</b><span class="stat-of">/<span id="m-total">0</span></span></span></div>
+      <div class="stat"><span class="stat-k">crashed</span><span class="stat-v" id="m-crashed">0</span></div>
+      <div class="stat"><span class="stat-k">apps mem</span><span class="stat-v" id="m-mem-services">—</span></div>
+      <div class="stat"><span class="stat-k">runner mem</span><span class="stat-v" id="m-mem-runner">—</span></div>
+      <div class="stat"><span class="stat-k">total mem</span><span class="stat-v" id="m-mem-total">—</span></div>
+      <div class="stat stat-cpu"><span class="stat-k">runner cpu</span><span class="stat-v"><span id="m-cpu">—</span><span class="meter"><i id="m-cpu-bar"></i></span></span></div>
+      <div class="stat"><span class="stat-k">uptime</span><span class="stat-v" id="m-uptime">—</span></div>
+      <div class="stat stat-meta"><span class="stat-k">endpoint</span><span class="stat-v" id="status-meta">—</span></div>
+    </section>
 
-    <section class="status-panel" id="status-panel">
-      <div class="status-head">
-        <div>
-          <p class="eyebrow">Status</p>
-          <h2>Machine snapshot</h2>
+    <main class="main">
+      <section class="offline" id="offline" hidden>
+        <div class="offline-card">
+          <svg class="mark big" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5" class="mark-box"/><path d="m8 9 3 3-3 3" class="mark-chev"/><path d="M13 15h3.5" class="mark-cur"/></svg>
+          <h1>Control panel runs on your machine</h1>
+          <p>This dashboard only works next to Service Runner on your Windows PC. Clone the repo, run <code>pnpm start</code>, then open <code>http://127.0.0.1:4780/</code>.</p>
         </div>
-        <div class="status-live" id="status-live"><span class="dot"></span><span id="status-live-label">Idle</span></div>
-      </div>
-      <div class="metrics">
-        <article class="metric">
-          <span class="metric-value" id="m-running">0</span>
-          <span class="metric-label">Running</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-total">0</span>
-          <span class="metric-label">Services</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-crashed">0</span>
-          <span class="metric-label">Crashed</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-uptime">—</span>
-          <span class="metric-label">Uptime</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-mem-services">—</span>
-          <span class="metric-label">Apps memory</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-mem-runner">—</span>
-          <span class="metric-label">Runner memory</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-mem-total">—</span>
-          <span class="metric-label">Total memory</span>
-        </article>
-        <article class="metric">
-          <span class="metric-value" id="m-cpu">—</span>
-          <span class="metric-label">Runner CPU</span>
-        </article>
-      </div>
-      <p class="muted small status-meta" id="status-meta"></p>
-    </section>
+      </section>
 
-    <section class="dash-toolbar">
-      <div class="dash-actions">
-        <button type="button" class="btn primary" id="btn-add">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Add service
-        </button>
-        <button type="button" class="btn" id="btn-group">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h7v11H4zM13 7h7v5h-7zM13 14h7v4h-7z"/></svg>
-          New group
-        </button>
-      </div>
-      <div class="tabs" id="group-tabs"></div>
-    </section>
+      <!-- SERVICES -->
+      <section class="view" id="view-services" data-view="services" hidden>
+        <div class="split" id="split">
+          <div class="pane-list">
+            <div class="list-head">
+              <div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
+              <div class="list-actions">
+                <label class="search" title="Filter services (/)">
+                  <svg class="i"><use href="#i-search"/></svg>
+                  <input id="svc-filter" type="search" placeholder="Filter" autocomplete="off" spellcheck="false" aria-label="Filter services" />
+                  <kbd>/</kbd>
+                </label>
+                <button type="button" class="btn ghost" id="btn-group" title="New group"><svg class="i"><use href="#i-layers"/></svg><span class="hide-sm">Group</span></button>
+                <button type="button" class="btn ghost danger-hover" id="btn-stop-all" title="Stop every running service"><svg class="i"><use href="#i-power"/></svg><span class="hide-sm">Stop all</span></button>
+                <button type="button" class="btn primary" id="btn-add" title="Add service (n)"><svg class="i"><use href="#i-plus"/></svg><span>Add</span></button>
+              </div>
+            </div>
 
-    <section id="services" class="cards"></section>
-    <p class="empty" id="empty" hidden>No services yet. Add one, or have an agent PUT to <code>/api/v1/services/:id</code>.</p>
+            <div class="group-bar" id="group-bar" hidden>
+              <div class="group-info"><svg class="i"><use href="#i-layers"/></svg><b id="group-name"></b><span class="muted mono" id="group-count"></span></div>
+              <div class="group-actions">
+                <button type="button" class="btn sm" id="btn-group-start"><svg class="i"><use href="#i-play"/></svg>Start group</button>
+                <button type="button" class="btn sm" id="btn-group-stop"><svg class="i"><use href="#i-stop"/></svg>Stop group</button>
+                <button type="button" class="btn sm ghost" id="btn-group-rename">Rename</button>
+                <button type="button" class="btn sm ghost danger-hover" id="btn-group-delete">Delete</button>
+              </div>
+            </div>
 
-    <section class="prompt-card" id="prompt-card">
-      <div class="prompt-head">
-        <div>
-          <h2>Agent prompt</h2>
-          <p class="muted">Paste this into any coding agent so it can register, update, and restart an app on this machine.</p>
+            <div class="svc-list" id="svc-list" role="list"></div>
+
+            <div class="empty" id="empty" hidden>
+              <div class="empty-art"><svg class="i"><use href="#i-terminal"/></svg></div>
+              <h3 id="empty-title">No services yet</h3>
+              <p id="empty-body">Add one here, or paste the <a href="#/agent">agent prompt</a> into a coding agent and let it register the app with <code>PUT /api/v1/services/:id</code>.</p>
+              <button type="button" class="btn primary" id="btn-add-empty"><svg class="i"><use href="#i-plus"/></svg>Add service</button>
+            </div>
+          </div>
+
+          <!-- LOG CONSOLE -->
+          <section class="console" id="console" hidden aria-label="Log console">
+            <header class="con-head">
+              <div class="con-title">
+                <i class="dot" id="con-dot"></i>
+                <div class="con-name">
+                  <h2 id="con-name">—</h2>
+                  <p class="mono muted" id="con-sub"></p>
+                </div>
+              </div>
+              <div class="con-head-actions">
+                <span class="con-chip" id="con-status"></span>
+                <button type="button" class="icon-btn" id="con-start" title="Start / stop (s / x)"><svg class="i"><use href="#i-play"/></svg></button>
+                <button type="button" class="icon-btn" id="con-restart" title="Restart (r)"><svg class="i"><use href="#i-restart"/></svg></button>
+                <button type="button" class="icon-btn" id="con-close" title="Close (Esc)" aria-label="Close console"><svg class="i"><use href="#i-close"/></svg></button>
+              </div>
+            </header>
+            <div class="con-tools">
+              <label class="search con-search">
+                <svg class="i"><use href="#i-search"/></svg>
+                <input id="log-q" type="search" placeholder="Search logs" autocomplete="off" spellcheck="false" aria-label="Search logs" />
+                <span class="mono muted con-count" id="log-count"></span>
+                <button type="button" class="mini" id="log-prev" title="Previous match (Shift+Enter)" aria-label="Previous match"><svg class="i"><use href="#i-chevron-up"/></svg></button>
+                <button type="button" class="mini" id="log-next" title="Next match (Enter)" aria-label="Next match"><svg class="i"><use href="#i-chevron-down"/></svg></button>
+              </label>
+              <button type="button" class="tool" id="log-only" aria-pressed="false" title="Show only matching lines"><svg class="i"><use href="#i-filter"/></svg><span class="hide-sm">Only</span></button>
+              <div class="seg streams" role="group" aria-label="Streams">
+                <button type="button" class="tool" data-stream="stdout" aria-pressed="true" title="stdout">out <span class="n" id="n-stdout">0</span></button>
+                <button type="button" class="tool err" data-stream="stderr" aria-pressed="true" title="stderr">err <span class="n" id="n-stderr">0</span></button>
+                <button type="button" class="tool sys" data-stream="sys" aria-pressed="true" title="Service Runner events">sys <span class="n" id="n-sys">0</span></button>
+              </div>
+              <span class="tool-sp"></span>
+              <select id="log-date" class="tool-select" aria-label="Log date" title="Log history"></select>
+              <button type="button" class="tool" id="log-wrap" aria-pressed="false" title="Wrap long lines (w)"><svg class="i"><use href="#i-wrap"/></svg></button>
+              <button type="button" class="tool" id="log-follow" aria-pressed="true" title="Follow tail (f)"><svg class="i"><use href="#i-follow"/></svg></button>
+              <button type="button" class="tool" id="log-clear" title="Clear view (does not delete files)"><svg class="i"><use href="#i-ban"/></svg></button>
+              <button type="button" class="tool" id="log-copy" title="Copy selection or visible lines"><svg class="i"><use href="#i-copy"/></svg></button>
+              <button type="button" class="tool" id="log-download" title="Download as .log"><svg class="i"><use href="#i-download"/></svg></button>
+              <button type="button" class="tool" id="log-refresh" title="Reload from disk"><svg class="i"><use href="#i-restart"/></svg></button>
+            </div>
+            <div class="con-body-wrap">
+              <div class="con-body mono" id="log-body" tabindex="0" aria-live="off"></div>
+              <button type="button" class="jump" id="log-jump" hidden><svg class="i"><use href="#i-arrow-down"/></svg><span id="log-jump-label">Resume</span></button>
+            </div>
+            <footer class="con-foot mono">
+              <span id="log-meta">—</span>
+              <span id="log-state"></span>
+            </footer>
+          </section>
         </div>
-        <button type="button" class="btn primary" id="btn-copy">Copy prompt</button>
-      </div>
-      <pre id="prompt-text" class="prompt-text"></pre>
-    </section>
-  </main>
+      </section>
 
-  <aside class="drawer" id="drawer" hidden>
-    <div class="drawer-head">
-      <div>
-        <h2 id="drawer-title">Logs</h2>
-        <p class="muted" id="drawer-sub"></p>
-      </div>
-      <div class="drawer-actions">
-        <select id="log-date"></select>
-        <button type="button" class="btn ghost" id="btn-copy-logs">Copy</button>
-        <button type="button" class="btn ghost" id="btn-refresh-logs">Refresh</button>
-        <button type="button" class="btn ghost" id="btn-close-drawer">Close</button>
-      </div>
-    </div>
-    <pre class="log" id="log-view"></pre>
-  </aside>
+      <!-- PORTAL -->
+      <section class="view view-pad" id="view-portal" data-view="portal" hidden>
+        <div class="page-head">
+          <div>
+            <h1>Portal</h1>
+            <p class="muted">A login-protected gateway that publishes selected apps to the internet through your tunnel. The control panel itself is never exposed.</p>
+          </div>
+        </div>
 
-  <div class="modal-bg" id="modal-bg" hidden>
-    <form class="modal" id="form-service">
-      <h2 id="form-title">Add service</h2>
-      <label>Name <input name="name" required placeholder="Life OS" /></label>
-      <label>Stable id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="life-os" /></label>
-      <label>Project folder (absolute local path) <input name="cwd" required placeholder="E:\My_Project\Life_OS" /></label>
-      <label>Command <input name="command" required placeholder="pnpm dev" /></label>
-      <label>Python venv (optional) <input name="venv" placeholder="E:\My_Project\app\.venv" /></label>
-      <label>Group
-        <select name="groupId"><option value="">— none —</option></select>
-      </label>
-      <label>Environment variables <textarea name="env" rows="3" placeholder="PORT=3000&#10;NODE_ENV=development"></textarea></label>
-      <div class="checks">
-        <label class="check"><input type="checkbox" name="autoStart" checked /> Start with Service Runner (including at logon)</label>
-        <label class="check"><input type="checkbox" name="restartOnCrash" /> Restart if it crashes</label>
-      </div>
-      <p class="error" id="form-error" hidden></p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Save</button>
-      </div>
-    </form>
+        <div class="note" id="portal-missing" hidden>
+          <svg class="i"><use href="#i-globe"/></svg>
+          <div>
+            <b>Portal isn't available in this Service Runner build.</b>
+            <p class="muted">Update Service Runner and restart it to publish apps behind a login page.</p>
+          </div>
+        </div>
+        <div class="note warn" id="portal-error" hidden>
+          <svg class="i"><use href="#i-shield"/></svg>
+          <div><b>Couldn't load portal settings.</b><p class="muted" id="portal-error-msg"></p></div>
+          <button type="button" class="btn sm" id="portal-retry">Retry</button>
+        </div>
+
+        <div class="portal-grid" id="portal-body" hidden>
+          <div class="col">
+            <section class="card">
+              <header class="card-h">
+                <div>
+                  <h2>Gateway</h2>
+                  <p class="muted">Binds to <span class="mono">127.0.0.1</span> only. Point a tunnel (Tailscale Funnel, Cloudflare Tunnel) at it.</p>
+                </div>
+                <label class="switch" title="Enable the portal listener">
+                  <input type="checkbox" id="p-enabled" />
+                  <span class="switch-ui" aria-hidden="true"></span>
+                  <span class="sr-only">Portal enabled</span>
+                </label>
+              </header>
+              <div class="gw-state" id="gw-state">
+                <i class="dot"></i>
+                <div>
+                  <b id="gw-label">Off</b>
+                  <p class="mono muted" id="gw-sub"></p>
+                </div>
+                <div class="gw-links" id="gw-links"></div>
+              </div>
+              <div class="note tunnel" id="p-tunnel" hidden></div>
+              <form class="form" id="p-form" autocomplete="off">
+                <div class="row2">
+                  <label class="fld"><span>Title</span><input name="title" maxlength="60" placeholder="My Apps" /></label>
+                  <label class="fld"><span>Public URL</span><input name="publicUrl" type="url" placeholder="https://your-box.example.ts.net" spellcheck="false" /></label>
+                </div>
+                <div class="row2">
+                  <label class="fld"><span>Port</span><input name="port" type="number" min="1" max="65535" /></label>
+                  <label class="fld"><span>Stay signed in (days)</span><input name="sessionDays" type="number" min="1" max="400" /></label>
+                </div>
+                <div class="form-foot">
+                  <span class="muted small" id="p-form-hint">Public URL is informational — it's used for links here and in the agent prompt.</span>
+                  <button type="submit" class="btn primary" id="p-save" disabled>Save</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="card">
+              <header class="card-h">
+                <div>
+                  <h2>Access token</h2>
+                  <p class="muted" id="tok-desc">People sign in to the portal with this token once per device.</p>
+                </div>
+                <span class="pill" id="tok-pill">not set</span>
+              </header>
+              <div class="tok-row">
+                <button type="button" class="btn" id="btn-gen-token"><svg class="i"><use href="#i-key"/></svg><span id="btn-gen-token-label">Generate access token</span></button>
+                <p class="muted small">Only a hash is stored. Generating a new token signs out every device.</p>
+              </div>
+            </section>
+          </div>
+
+          <div class="col">
+            <section class="card">
+              <header class="card-h">
+                <div>
+                  <h2>Published apps <span class="count" id="apps-count"></span></h2>
+                  <p class="muted">Publish a service from its editor → “Publish to portal”.</p>
+                </div>
+              </header>
+              <ul class="app-list" id="p-apps"></ul>
+            </section>
+
+            <section class="card">
+              <header class="card-h">
+                <div>
+                  <h2>Signed-in devices <span class="count" id="dev-count"></span></h2>
+                  <p class="muted">Each browser that signed in with the token.</p>
+                </div>
+                <button type="button" class="btn sm ghost danger-hover" id="btn-revoke-all" disabled>Revoke all</button>
+              </header>
+              <ul class="dev-list" id="p-devices"></ul>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- AGENT -->
+      <section class="view view-pad" id="view-agent" data-view="agent" hidden>
+        <div class="page-head">
+          <div>
+            <h1>Agent prompt</h1>
+            <p class="muted">Paste this into any coding agent so it can register, update, and restart an app on this machine.</p>
+          </div>
+          <div class="page-actions">
+            <button type="button" class="btn ghost" id="btn-reveal-prompt" aria-pressed="false"><svg class="i"><use href="#i-eye"/></svg><span>Show token</span></button>
+            <button type="button" class="btn primary" id="btn-copy"><svg class="i"><use href="#i-copy"/></svg><span>Copy prompt</span></button>
+          </div>
+        </div>
+        <pre class="prompt mono" id="prompt-text"></pre>
+
+        <section class="card endpoints" id="endpoints-card" hidden>
+          <header class="card-h"><div><h2>API quick reference</h2><p class="muted">All calls need <span class="mono">Authorization: Bearer &lt;token&gt;</span>.</p></div></header>
+          <ul class="ep-list mono" id="endpoints"></ul>
+        </section>
+      </section>
+    </main>
   </div>
 
-  <div class="modal-bg" id="group-bg" hidden>
-    <form class="modal" id="form-group">
-      <h2>New group</h2>
-      <label>Name <input name="name" required placeholder="Dev stack" /></label>
-      <label>Id <input name="id" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}" placeholder="dev-stack" /></label>
-      <p class="error" id="group-error" hidden></p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-group-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Create</button>
-      </div>
-    </form>
-  </div>
+  <!-- Service editor -->
+  <dialog class="dlg dlg-wide" id="dlg-service" aria-labelledby="form-title">
+    <form id="form-service" novalidate autocomplete="off">
+      <header class="dlg-h">
+        <h2 id="form-title">Add service</h2>
+        <div class="seg kind" role="radiogroup" aria-label="Kind">
+          <label><input type="radio" name="kind" value="managed" checked /><span>Managed process</span></label>
+          <label><input type="radio" name="kind" value="external" /><span>External app</span></label>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button>
+      </header>
+      <div class="dlg-b">
+        <div class="row3">
+          <label class="fld"><span>Name</span><input name="name" required placeholder="My App" /></label>
+          <label class="fld"><span>Stable id</span><input name="id" class="mono" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,63}" placeholder="my-app" spellcheck="false" /></label>
+          <label class="fld"><span>Group</span><select name="groupId"><option value="">— none —</option></select></label>
+        </div>
 
-  <div class="modal-bg" id="settings-bg" hidden>
-    <form class="modal" id="form-settings">
-      <h2>Settings</h2>
-      <label>Log retention (days) <input name="logRetentionDays" type="number" min="1" max="365" /></label>
-      <label class="check"><input type="checkbox" name="autoStartOnBoot" /> Start Service Runner when Windows logs on</label>
-      <label class="check"><input type="checkbox" name="openDashboardOnLaunch" /> Open the site in a browser on launch</label>
-      <p class="muted small">Logs and config live in <code id="config-dir"></code> and are never part of the git repo. Changing the listen port requires a restart.</p>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" id="btn-settings-cancel">Cancel</button>
-        <button type="submit" class="btn primary">Save</button>
+        <div class="managed-only">
+          <label class="fld"><span>Project folder</span><input name="cwd" class="mono" placeholder="C:\projects\my-app" spellcheck="false" /><small>Absolute local path. No network shares.</small></label>
+          <div class="row2">
+            <label class="fld"><span>Command</span><input name="command" class="mono" placeholder="pnpm dev" spellcheck="false" /></label>
+            <label class="fld"><span>Python venv <em>optional</em></span><input name="venv" class="mono" placeholder="C:\projects\my-app\.venv" spellcheck="false" /></label>
+          </div>
+          <div class="row2">
+            <label class="fld"><span>Environment <em>KEY=value per line</em></span><textarea name="env" rows="3" class="mono" placeholder="PORT=3000&#10;NODE_ENV=production" spellcheck="false"></textarea></label>
+            <label class="fld"><span>Prepend to PATH <em>one folder per line</em></span><textarea name="pathPrepend" rows="3" class="mono" placeholder="C:\tools\node22" spellcheck="false"></textarea></label>
+          </div>
+          <div class="checks">
+            <label class="switch-row"><span class="switch"><input type="checkbox" name="autoStart" checked /><span class="switch-ui" aria-hidden="true"></span></span><span>Start with Service Runner <small>including at logon</small></span></label>
+            <label class="switch-row"><span class="switch"><input type="checkbox" name="restartOnCrash" /><span class="switch-ui" aria-hidden="true"></span></span><span>Restart if it crashes</span></label>
+          </div>
+        </div>
+
+        <div class="external-only" hidden>
+          <label class="fld"><span>URL</span><input name="url" class="mono" placeholder="http://127.0.0.1:8090" spellcheck="false" /><small>Runs outside Service Runner (a Windows service, Docker, another supervisor). Probed every 15 s to show up/down; never started or stopped from here.</small></label>
+        </div>
+
+        <details class="publish" id="publish">
+          <summary>
+            <svg class="i"><use href="#i-globe"/></svg>
+            <span class="pub-title">Publish to portal</span>
+            <span class="pub-state" id="pub-state">local only</span>
+            <svg class="i chev"><use href="#i-chevron-down"/></svg>
+          </summary>
+          <div class="pub-body">
+            <label class="switch-row pub-toggle"><span class="switch"><input type="checkbox" name="pubEnabled" /><span class="switch-ui" aria-hidden="true"></span></span><span>Publish this app behind the portal login <small>Only do this for apps you want reachable from the internet.</small></span></label>
+            <fieldset class="pub-fields" id="pub-fields" disabled>
+              <div class="row2">
+                <label class="fld"><span>Public path</span><div class="affix"><b class="mono">/</b><input name="pubPath" class="mono" placeholder="my-app" spellcheck="false" /></div><small id="pub-path-help">One lowercase segment: a–z, 0–9, dashes.</small></label>
+                <label class="fld"><span>Upstream</span><input name="pubUpstream" class="mono" placeholder="http://127.0.0.1:3000" spellcheck="false" /><small>Loopback address the app listens on.</small></label>
+              </div>
+              <label class="switch-row"><span class="switch"><input type="checkbox" name="pubStrip" checked /><span class="switch-ui" aria-hidden="true"></span></span><span>Strip the path prefix <small id="strip-help">On: <span class="mono">/my-app/x</span> → upstream <span class="mono">/x</span>. Turn off if the app is base-path aware.</small></span></label>
+              <div class="pub-look">
+                <div class="pub-look-fields">
+                  <div class="row2">
+                    <label class="fld"><span>Tile title</span><input name="pubTitle" placeholder="Defaults to the name" /></label>
+                    <label class="fld"><span>Order</span><input name="pubOrder" type="number" placeholder="100" /></label>
+                  </div>
+                  <label class="fld"><span>Description</span><input name="pubDesc" maxlength="90" placeholder="One short line" /></label>
+                  <div class="row2">
+                    <label class="fld"><span>Icon <em>emoji or image URL</em></span><input name="pubIcon" placeholder="🧭" /></label>
+                    <label class="fld"><span>Accent</span><div class="color-in"><input type="color" name="pubColorPick" value="#7c9cff" aria-label="Pick accent" /><input name="pubColor" class="mono" placeholder="#7c9cff" /></div></label>
+                  </div>
+                </div>
+                <div class="pub-preview" aria-hidden="true">
+                  <span class="muted small">Tile preview</span>
+                  <div class="tile-prev" id="tile-prev">
+                    <span class="tp-ico" id="tp-ico">🧭</span>
+                    <span class="tp-name" id="tp-name">My App</span>
+                    <span class="tp-desc" id="tp-desc">One short line</span>
+                    <span class="tp-state"><i></i>Online</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row2">
+                <label class="fld"><span>Bypass login <em>one prefix per line</em></span><textarea name="pubBypass" rows="3" class="mono" placeholder="/my-app/api/v1&#10;/health" spellcheck="false"></textarea><small>Absolute public path prefixes that skip the portal login. Only for routes the app protects itself (APIs, webhooks, feeds).</small></label>
+                <label class="fld"><span>Root aliases <em>one prefix per line</em></span><textarea name="pubAliases" rows="3" class="mono" placeholder="/static-assets" spellcheck="false"></textarea><small>Root-level prefixes forwarded to this app unchanged — for apps that emit root-absolute links.</small></label>
+              </div>
+            </fieldset>
+          </div>
+        </details>
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+      </div>
+      <footer class="dlg-f">
+        <button type="button" class="btn ghost danger-hover" id="btn-delete-svc" hidden><svg class="i"><use href="#i-trash"/></svg>Delete</button>
+        <span class="sp"></span>
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="btn-save-svc">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Group -->
+  <dialog class="dlg" id="dlg-group" aria-labelledby="group-title">
+    <form id="form-group" novalidate autocomplete="off">
+      <header class="dlg-h"><h2 id="group-title">New group</h2><button type="button" class="icon-btn" data-close aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></header>
+      <div class="dlg-b">
+        <label class="fld"><span>Name</span><input name="name" required placeholder="Dev stack" /></label>
+        <label class="fld" id="group-id-field"><span>Id <em>optional</em></span><input name="id" class="mono" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,63}" placeholder="dev-stack" /></label>
+        <p class="form-error" id="group-error" role="alert" hidden></p>
+      </div>
+      <footer class="dlg-f"><span class="sp"></span><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn primary" id="btn-group-save">Create</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog class="dlg" id="dlg-settings" aria-labelledby="settings-title">
+    <form id="form-settings" novalidate autocomplete="off">
+      <header class="dlg-h"><h2 id="settings-title">Settings</h2><button type="button" class="icon-btn" data-close aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></header>
+      <div class="dlg-b">
+        <div class="row2">
+          <label class="fld"><span>Log retention (days)</span><input name="logRetentionDays" type="number" min="1" max="365" /></label>
+          <label class="fld"><span>Control panel port</span><input name="port" type="number" min="1" max="65535" /><small>Takes effect after a restart.</small></label>
+        </div>
+        <div class="checks">
+          <label class="switch-row"><span class="switch"><input type="checkbox" name="autoStartOnBoot" /><span class="switch-ui" aria-hidden="true"></span></span><span>Start Service Runner when Windows logs on</span></label>
+          <label class="switch-row"><span class="switch"><input type="checkbox" name="openDashboardOnLaunch" /><span class="switch-ui" aria-hidden="true"></span></span><span>Open the control panel on launch</span></label>
+        </div>
+        <div class="fld">
+          <span>Master token</span>
+          <div class="secret">
+            <code class="mono" id="set-token">••••••••••••••••••••••••</code>
+            <button type="button" class="icon-btn" id="btn-token-reveal" title="Show" aria-label="Show token"><svg class="i"><use href="#i-eye"/></svg></button>
+            <button type="button" class="icon-btn" id="btn-token-copy" title="Copy" aria-label="Copy token"><svg class="i"><use href="#i-copy"/></svg></button>
+            <button type="button" class="btn sm ghost danger-hover" id="btn-token-regen">Regenerate</button>
+          </div>
+          <small>Agents use it for the API. Regenerating breaks prompts you already pasted.</small>
+        </div>
+        <p class="muted small">Logs and config live in <code id="config-dir"></code> and never go in the git repo.</p>
+        <p class="form-error" id="settings-error" role="alert" hidden></p>
+      </div>
+      <footer class="dlg-f"><span class="sp"></span><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn primary">Save</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Confirm -->
+  <dialog class="dlg dlg-sm" id="dlg-confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <div class="dlg-b confirm-b">
+        <h2 id="confirm-title">Are you sure?</h2>
+        <p class="muted" id="confirm-body"></p>
+      </div>
+      <footer class="dlg-f"><span class="sp"></span><button value="cancel" class="btn ghost" id="confirm-cancel">Cancel</button><button value="ok" class="btn primary" id="confirm-ok">Confirm</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Token reveal (shown once) -->
+  <dialog class="dlg dlg-sm" id="dlg-token" aria-labelledby="token-title">
+    <form method="dialog">
+      <div class="dlg-b">
+        <div class="tok-icon"><svg class="i"><use href="#i-key"/></svg></div>
+        <h2 id="token-title">Save this access token now</h2>
+        <p class="muted">It's shown only once — Service Runner keeps just a hash. Use it to sign in on each device at the portal.</p>
+        <div class="secret big">
+          <code class="mono" id="new-token"></code>
+          <button type="button" class="btn sm" id="btn-new-token-copy"><svg class="i"><use href="#i-copy"/></svg>Copy</button>
+        </div>
+        <p class="note-line"><svg class="i"><use href="#i-shield"/></svg>All previously signed-in devices were signed out.</p>
+      </div>
+      <footer class="dlg-f"><span class="sp"></span><button value="ok" class="btn primary">I've saved it</button></footer>
+    </form>
+  </dialog>
+
+  <!-- Shortcuts -->
+  <dialog class="dlg dlg-sm" id="dlg-keys" aria-labelledby="keys-title">
+    <form method="dialog">
+      <header class="dlg-h"><h2 id="keys-title">Keyboard</h2><button value="x" class="icon-btn" aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></header>
+      <div class="dlg-b keys">
+        <dl>
+          <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>Move between services</dd>
+          <dt><kbd>Enter</kbd></dt><dd>Open logs</dd>
+          <dt><kbd>s</kbd> / <kbd>x</kbd></dt><dd>Start / stop selected</dd>
+          <dt><kbd>r</kbd></dt><dd>Restart selected</dd>
+          <dt><kbd>e</kbd></dt><dd>Edit selected</dd>
+          <dt><kbd>n</kbd></dt><dd>New service</dd>
+          <dt><kbd>/</kbd></dt><dd>Search logs (or filter services)</dd>
+          <dt><kbd>Enter</kbd> <kbd>⇧ Enter</kbd></dt><dd>Next / previous match</dd>
+          <dt><kbd>f</kbd> <kbd>w</kbd></dt><dd>Follow tail · wrap lines</dd>
+          <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Services · Portal · Agent</dd>
+          <dt><kbd>t</kbd></dt><dd>Toggle theme</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Close / clear</dd>
+        </dl>
       </div>
     </form>
-  </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
   <script type="application/json" id="sr-bootstrap">%%BOOTSTRAP%%</script>
-  <script src="grid.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

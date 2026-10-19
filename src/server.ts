@@ -27,6 +27,13 @@ import {
 import { HttpError, type AppConfig, type TrayPayload } from "./types.ts";
 import { isLoopbackAddr } from "./security.ts";
 import { collectStats } from "./stats.ts";
+import {
+  patchPortal,
+  portalState,
+  regeneratePortalToken,
+  revokeAllPortalSessions,
+  revokePortalSession,
+} from "./portal/admin.ts";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -170,6 +177,7 @@ async function routeApi(req: IncomingMessage, res: ServerResponse, url: URL, hoo
     if (body.port !== undefined) {
       const n = Number(body.port);
       if (!Number.isInteger(n) || n < 1 || n > 65535) throw new HttpError(400, "port must be 1–65535");
+      if (n === cfg.portal.port) throw new HttpError(400, "control-panel port must differ from the portal port");
       cfg.port = n;
     }
     if (body.autoStartOnBoot !== undefined) {
@@ -182,7 +190,31 @@ async function routeApi(req: IncomingMessage, res: ServerResponse, url: URL, hoo
       cfg.token = randomBytes(24).toString("hex");
     }
     saveConfig(cfg);
-    json(res, 200, { ok: true, settings: { ...cfg, services: undefined, groups: undefined }, restartRequired: body.port !== undefined });
+    json(res, 200, { ok: true, settings: { ...cfg, services: undefined, groups: undefined, portal: undefined }, restartRequired: body.port !== undefined });
+    return;
+  }
+
+  if (p === "/api/v1/portal") {
+    if (method === "GET") {
+      json(res, 200, await portalState());
+      return;
+    }
+    if (method === "PATCH" || method === "PUT") {
+      json(res, 200, await patchPortal(await readJson(req)));
+      return;
+    }
+  }
+  if (method === "POST" && p === "/api/v1/portal/token") {
+    json(res, 200, await regeneratePortalToken());
+    return;
+  }
+  if (method === "DELETE" && p === "/api/v1/portal/sessions") {
+    json(res, 200, revokeAllPortalSessions());
+    return;
+  }
+  const ps = p.match(/^\/api\/v1\/portal\/sessions\/([^/]+)$/);
+  if (method === "DELETE" && ps) {
+    json(res, 200, revokePortalSession(decodeURIComponent(ps[1])));
     return;
   }
 
@@ -380,7 +412,8 @@ function serveStatic(_req: IncomingMessage, res: ServerResponse, path: string): 
     return;
   }
   const type = MIME[extname(full).toLowerCase()] ?? "application/octet-stream";
-  res.writeHead(200, { "Content-Type": type, "Cache-Control": "public, max-age=3600" });
+  // Local only, so revalidating is free — and an upgrade never pairs new HTML with stale JS.
+  res.writeHead(200, { "Content-Type": type, "Cache-Control": "no-cache" });
   res.end(readFileSync(full));
 }
 

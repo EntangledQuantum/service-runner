@@ -21,7 +21,7 @@
     "uninstall:startup": "tsx src/index.ts --uninstall-startup",
     "make-icon": "node scripts/make-icon.mjs",
     "screenshot": "node scripts/screenshot.mjs",
-    "test": "tsx --test src/security.test.ts src/paths.test.ts"
+    "test": "tsx --test src/security.test.ts src/paths.test.ts src/portal.test.ts"
   },
   "engines": {
     "node": ">=22"

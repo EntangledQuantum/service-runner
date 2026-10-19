@@ -4,11 +4,12 @@ import { spawn } from "node:child_process";
 import { loadConfig, saveConfig } from "./config.ts";
 import { dataDir, pidPath } from "./paths.ts";
 import { pruneLogs } from "./logs.ts";
-import { initProcessManager, startAutoServices, stopAllAndWait, getConfig } from "./process-manager.ts";
+import { initProcessManager, startAutoServices, startHealthProbes, stopAllAndWait, getConfig } from "./process-manager.ts";
 import { createAppServer } from "./server.ts";
 import { startTray, stopTray } from "./tray.ts";
 import { installStartup, launchDetached, uninstallStartup, writeLaunchVbs } from "./autostart.ts";
 import { baseUrl } from "./prompt.ts";
+import { applyPortal, flushPortalSessions, stopPortal } from "./portal/server.ts";
 
 const args = new Set(process.argv.slice(2));
 const hidden = args.has("--hidden");
@@ -16,6 +17,8 @@ const foreground = args.has("--foreground");
 const setup = args.has("--setup");
 const installOnly = args.has("--install-startup");
 const uninstallOnly = args.has("--uninstall-startup");
+// Headless: no tray icon, no Startup shortcut. With SERVICE_RUNNER_DATA_DIR this runs an isolated instance.
+const noTray = args.has("--no-tray");
 
 async function main(): Promise<void> {
   if (process.platform !== "win32") {
@@ -35,7 +38,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (installOnly || setup || cfg.autoStartOnBoot) {
+  if (installOnly || setup || (cfg.autoStartOnBoot && !noTray)) {
     try {
       const lnk = await installStartup();
       cfg.autoStartOnBoot = true;
@@ -95,8 +98,10 @@ async function main(): Promise<void> {
   console.log(`Config  ${dataDir()}\\config.json`);
   console.log(`Logs    ${dataDir()}\\logs`);
 
-  startTray(getConfig());
+  if (!noTray) startTray(getConfig());
   startAutoServices();
+  startHealthProbes();
+  if (getConfig().portal.enabled) await applyPortal();
 
   const openDash = !hidden && getConfig().openDashboardOnLaunch;
   if (openDash) openBrowser(baseUrl(getConfig()) + "/");
@@ -115,6 +120,12 @@ async function shutdown(): Promise<void> {
   console.log("Stopping all services…");
   try {
     await stopAllAndWait(8000);
+  } catch {
+    /* ignore */
+  }
+  try {
+    flushPortalSessions();
+    await stopPortal();
   } catch {
     /* ignore */
   }
