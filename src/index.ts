@@ -2,7 +2,8 @@ import { createServer as createNetServer } from "node:net";
 import { writeFileSync, unlinkSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { loadConfig, saveConfig } from "./config.ts";
-import { dataDir, pidPath } from "./paths.ts";
+import { dataDir, pidPath, quitMarkerPath, runnerLogPath } from "./paths.ts";
+import { logConsoleToFile, surviveUnexpectedErrors } from "./runner-log.ts";
 import { pruneLogs } from "./logs.ts";
 import { initProcessManager, startAutoServices, startHealthProbes, stopAllAndWait, getConfig } from "./process-manager.ts";
 import { createAppServer } from "./server.ts";
@@ -19,6 +20,8 @@ const installOnly = args.has("--install-startup");
 const uninstallOnly = args.has("--uninstall-startup");
 // Headless: no tray icon, no Startup shortcut. With SERVICE_RUNNER_DATA_DIR this runs an isolated instance.
 const noTray = args.has("--no-tray");
+// Scheduled every few minutes: start only if Service Runner is down and wasn't quit on purpose.
+const watchdog = args.has("--watchdog");
 
 async function main(): Promise<void> {
   if (process.platform !== "win32") {
@@ -26,7 +29,20 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  if (hidden) logConsoleToFile(runnerLogPath());
+
   const cfg = loadConfig();
+  if (watchdog) {
+    if (existsSync(quitMarkerPath()) || (await portTaken(cfg.port))) process.exit(0);
+    console.warn("Watchdog: Service Runner was not running — starting it.");
+  } else {
+    // Any deliberate start re-arms the watchdog.
+    try {
+      if (existsSync(quitMarkerPath())) unlinkSync(quitMarkerPath());
+    } catch {
+      /* ignore */
+    }
+  }
   initProcessManager(cfg);
   writeLaunchVbs();
 
@@ -38,7 +54,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (installOnly || setup || (cfg.autoStartOnBoot && !noTray)) {
+  if (installOnly || setup || (cfg.autoStartOnBoot && !noTray && !watchdog)) {
     try {
       const lnk = await installStartup();
       cfg.autoStartOnBoot = true;
@@ -84,6 +100,8 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  surviveUnexpectedErrors();
+
   const server = createAppServer({
     onShutdown: shutdown,
   });
@@ -118,6 +136,11 @@ async function shutdown(): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log("Stopping all services…");
+  try {
+    writeFileSync(quitMarkerPath(), new Date().toISOString(), "utf8");
+  } catch {
+    /* ignore */
+  }
   try {
     await stopAllAndWait(8000);
   } catch {

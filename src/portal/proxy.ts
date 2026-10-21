@@ -1,5 +1,14 @@
-import { Agent as HttpAgent, request as httpRequest, type IncomingMessage, type OutgoingHttpHeaders, type ServerResponse } from "node:http";
+import {
+  Agent as HttpAgent,
+  request as httpRequest,
+  validateHeaderName,
+  validateHeaderValue,
+  type IncomingMessage,
+  type OutgoingHttpHeaders,
+  type ServerResponse,
+} from "node:http";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
+import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import { rewriteLocation, rewriteSetCookie, stripHopByHop, stripPortalCookie, type RouteApp } from "./routing.ts";
 
@@ -35,6 +44,20 @@ export function forwardHeaders(req: IncomingMessage, app: RouteApp, upgrade = fa
   return h;
 }
 
+/** Drop headers Node refuses to send, so one odd upstream header can't fail the response. */
+function validHeaders(h: OutgoingHttpHeaders): OutgoingHttpHeaders {
+  for (const [k, v] of Object.entries(h)) {
+    try {
+      validateHeaderName(k);
+      if (v === undefined) throw new Error("no value");
+      for (const one of Array.isArray(v) ? v : [v]) validateHeaderValue(k, String(one));
+    } catch {
+      delete h[k];
+    }
+  }
+  return h;
+}
+
 function responseHeaders(pres: IncomingMessage, app: RouteApp, extraCookies: string[]): OutgoingHttpHeaders {
   const h: OutgoingHttpHeaders = { ...pres.headers };
   stripHopByHop(h);
@@ -46,7 +69,7 @@ function responseHeaders(pres: IncomingMessage, app: RouteApp, extraCookies: str
     .concat(extraCookies);
   if (cookies.length) h["set-cookie"] = cookies;
   else delete h["set-cookie"];
-  return h;
+  return validHeaders(h);
 }
 
 function target(app: RouteApp, path: string) {
@@ -76,11 +99,21 @@ export function proxyHttp(
     agent: t.agent,
     rejectUnauthorized: false,
   });
+  // Socket callbacks run outside any try/catch: a throw here would take down the whole
+  // supervisor and every app with it, so a failure ends only this request.
   preq.on("response", (pres) => {
-    res.writeHead(pres.statusCode ?? 502, pres.statusMessage, responseHeaders(pres, app, extraCookies));
-    res.flushHeaders();
-    pres.pipe(res);
     pres.on("error", () => res.destroy());
+    try {
+      // The reason phrase is optional, and Node throws on odd characters in it — drop it.
+      res.writeHead(pres.statusCode ?? 502, responseHeaders(pres, app, extraCookies));
+      res.flushHeaders();
+      pres.pipe(res);
+    } catch (err) {
+      console.warn(`Portal: bad response from ${app.name}:`, (err as Error).message);
+      pres.destroy();
+      if (!res.headersSent) onDown();
+      else res.destroy();
+    }
   });
   preq.on("error", () => {
     if (res.destroyed || res.writableEnded) return;
@@ -90,6 +123,7 @@ export function proxyHttp(
   res.on("close", () => {
     if (!res.writableFinished) preq.destroy();
   });
+  req.on("error", () => preq.destroy());
   req.pipe(preq);
 }
 
@@ -113,8 +147,8 @@ export function proxyUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer,
   });
   socket.on("error", () => preq.destroy());
 
-  preq.on("upgrade", (pres, psock, phead) => {
-    const lines = [`HTTP/1.1 ${pres.statusCode ?? 101} ${pres.statusMessage ?? "Switching Protocols"}`];
+  const tunnel = (pres: IncomingMessage, psock: Socket, phead: Buffer) => {
+    const lines = [`HTTP/1.1 ${pres.statusCode ?? 101} Switching Protocols`];
     for (let i = 0; i < pres.rawHeaders.length; i += 2) {
       const k = pres.rawHeaders[i];
       let v: string | null = pres.rawHeaders[i + 1];
@@ -126,26 +160,46 @@ export function proxyUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer,
     if (head.length) psock.write(head);
     psock.setNoDelay(true);
     psock.setTimeout(0);
-    psock.on("error", () => socket.destroy());
     socket.on("close", () => psock.destroy());
     psock.on("close", () => socket.destroy());
     psock.pipe(socket);
     socket.pipe(psock);
-  });
+  };
 
   // Upstream answered without upgrading: relay status + body, then close.
-  preq.on("response", (pres) => {
+  const relay = (pres: IncomingMessage) => {
     const h = stripHopByHop({ ...pres.headers } as Record<string, unknown>);
     delete h["content-length"];
-    const lines = [`HTTP/1.1 ${pres.statusCode} ${pres.statusMessage ?? ""}`];
+    const lines = [`HTTP/1.1 ${pres.statusCode}`];
     for (const [k, v] of Object.entries(h)) {
       for (const one of Array.isArray(v) ? v : [v]) lines.push(`${k}: ${String(one)}`);
     }
     lines.push("Connection: close");
     socket.write(lines.join("\r\n") + "\r\n\r\n");
     pres.pipe(socket);
-  });
+  };
 
+  // Socket callbacks: contain any failure to this one connection.
+  preq.on("upgrade", (pres, psock, phead) => {
+    psock.on("error", () => socket.destroy());
+    try {
+      tunnel(pres, psock, phead);
+    } catch (err) {
+      console.warn(`Portal: bad upgrade from ${app.name}:`, (err as Error).message);
+      psock.destroy();
+      socket.destroy();
+    }
+  });
+  preq.on("response", (pres) => {
+    pres.on("error", () => socket.destroy());
+    try {
+      relay(pres);
+    } catch (err) {
+      console.warn(`Portal: bad response from ${app.name}:`, (err as Error).message);
+      pres.destroy();
+      socket.destroy();
+    }
+  });
   preq.on("error", () => rawResponse(socket, 502, `${app.name} is not running`));
   preq.end();
 }

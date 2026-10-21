@@ -54,6 +54,20 @@ export function pidPath(): string {
   return join(dataDir(), "runner.pid");
 }
 
+/** Service Runner's own output when it runs hidden (the tray process has no console). */
+export function runnerLogPath(): string {
+  return join(dataDir(), "runner.log");
+}
+
+/** Present after a deliberate quit, so the watchdog leaves Service Runner stopped. */
+export function quitMarkerPath(): string {
+  return join(dataDir(), "quit-requested");
+}
+
+export function watchdogVbsPath(): string {
+  return join(dataDir(), "watchdog.vbs");
+}
+
 export function sanitizeIdForPath(id: string): string {
   return id.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
